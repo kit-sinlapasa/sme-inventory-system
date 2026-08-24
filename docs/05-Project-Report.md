@@ -77,7 +77,7 @@
 
 ### Change Management
 
-Requirement ไม่ได้นิ่งตั้งแต่ต้น — มี **Change Request 9 รายการ** (CR-001 ถึง CR-009) ตลอดโครงงาน ตั้งแต่การเพิ่ม NFR-PRIV-01 (data retention), แก้ timeline 3 รอบ, ไปจนถึงเพิ่ม FR ใหม่ 4 ข้อ (email alert, รูปสินค้า, KPI dashboard, ขยาย seed data) แต่ละ CR บันทึกเหตุผล + Impact Analysis ไว้ครบที่ [01-Requirements-Package.md — Change Log](01-Requirements-Package.md)
+Requirement ไม่ได้นิ่งตั้งแต่ต้น — มี **Change Request 13 รายการ** (CR-001 ถึง CR-013) ตลอดโครงงาน ตั้งแต่การเพิ่ม NFR-PRIV-01 (data retention), แก้ timeline 3 รอบ, เพิ่ม FR ใหม่ 4 ข้อ (email alert, รูปสินค้า, KPI dashboard, ขยาย seed data) ไปจนถึงการรื้อ Dashboard ใหม่ทั้งหน้าใน CR-013 หลังทีมตัดสินว่ากราฟเดิมไม่มีประโยชน์ในการใช้งานจริง แต่ละ CR บันทึกเหตุผล + Impact Analysis ไว้ครบที่ [01-Requirements-Package.md — Change Log](01-Requirements-Package.md)
 
 ---
 
@@ -144,7 +144,7 @@ REST API ทุก endpoint แยกตาม resource (auth, public, products,
 | Auth | `python-jose` (JWT, HS256) · `passlib[bcrypt]` |
 | Rate Limiting | `slowapi` |
 | Frontend | React 18 + Vite + Tailwind CSS + React Router v7 |
-| Testing | Pytest + httpx (backend, 61 tests) |
+| Testing | Pytest + httpx (backend, 88 tests) |
 | CI/CD | GitHub Actions |
 | Deploy | Render.com (free tier — Postgres + 2 web service) |
 
@@ -364,7 +364,7 @@ Edge case อื่นที่ verify แล้วจริงแต่ไม�
 
 ### Test Evidence
 
-- Full test suite: `backend/tests/` (61 tests, `python -m pytest -v` reproducible locally)
+- Full test suite: `backend/tests/` (88 tests, `python -m pytest -v` reproducible locally)
 - Load test script: `backend/scripts/load_test.py`
 - CI logs: ดูที่ GitHub Actions run history ของ repo (เขียวทุกครั้งตั้งแต่สัปดาห์ 2)
 

@@ -18,7 +18,7 @@ NFR-REL-01 (กันขายสินค้าชิ้นเดียวซ�
 ระบบ live จริงบน Render (frontend + backend + Postgres) หลัง debug deploy failure 3 รอบจริง (Python version, bare `alembic` command) แต่ละรอบ verify ด้วย log จริงจาก Render CLI ไม่ใช่เดา — จุดที่ภูมิใจที่สุดคือรอบที่ 3 (bare `alembic` bug) ที่ **reproduce บั๊กเดิมบนเครื่อง local ได้ก่อนแก้** แทนที่จะเดาแล้วลอง push ใหม่ไปเรื่อย ๆ
 
 **1.4 Test coverage ครอบคลุมหลายมิติจริง**
-57 automated tests ครอบคลุม unit/integration/concurrency/security ไม่ใช่แค่ happy path — รวม STRIDE mitigation verification (5 tests), NFR-PRIV-01 purge (5 tests), และ load test แยกต่างหากสำหรับ NFR-PERF-01 ที่วัดผลจริงด้วย 200 concurrent request
+88 automated tests ครอบคลุม unit/integration/concurrency/security ไม่ใช่แค่ happy path — รวม STRIDE mitigation verification (5 tests), NFR-PRIV-01 purge (5 tests), และ load test แยกต่างหากสำหรับ NFR-PERF-01 ที่วัดผลจริงด้วย 200 concurrent request
 
 **1.5 AI Usage Log ที่ซื่อสัตย์จริง ไม่ใช่แค่ list ว่า "ใช้ AI ทำอะไรบ้าง"**
 มี entry ที่บันทึกความผิดพลาดของ AI ตรง ๆ อย่างน้อย 4 ครั้ง (สมมติผิดเรื่อง Hardware, เดาสาเหตุ deploy fail ผิดในรอบแรก, ทำ dependency ของ tooling พังชั่วคราว, บั๊ก debounce/seed script) — ตรงกับหลักที่ Deck 05 ต้องการ คือมีหลักฐานว่าทีม/AI **reject หรือแก้ output ที่ผิด** ไม่ใช่แค่ยอมรับทุกอย่างที่ AI สร้าง
@@ -31,7 +31,7 @@ NFR-REL-01 (กันขายสินค้าชิ้นเดียวซ�
 เริ่มจากเข้าใจว่าเหลือเวลา 1 สัปดาห์ → แก้เป็น 4 สัปดาห์ → แก้เป็น 8 สัปดาห์ ทุกครั้งต้องย้อนกลับไปปรับ priority ของ FR/NFR ใหม่ทั้งชุด (CR-003, CR-004, CR-005) — เสียเวลาที่ไม่จำเป็นและทำให้ RTM/priority ต้องแก้ซ้ำหลายรอบ บทเรียนคือควรยืนยันกรอบเวลาที่แน่นอนกับผู้สอน/สมาชิกทีมให้ชัดตั้งแต่ประชุมแรก ก่อนเริ่ม Requirement Package
 
 **2.2 Requirement ใหม่โผล่มากลางทางหลายรอบ**
-CR-001/CR-002 (data retention, reorder point ต่อสาขา) และ CR-006 ถึง CR-009 (email alert, รูปสินค้า, KPI dashboard, ขยาย seed data) ล้วนเป็นสิ่งที่ไม่มีในร่างแรก ต้องเพิ่มระหว่างทาง — ถึงจะมี Change Request log กำกับไว้ครบ แต่การที่ scope ขยายบ่อยขนาดนี้สะท้อนว่าขั้น elicitation แรกยังไม่ครอบคลุมพอ
+CR-001/CR-002 (data retention, reorder point ต่อสาขา) และ CR-006 ถึง CR-013 (email alert, รูปสินค้า, KPI dashboard, ขยาย seed data, ธีมใหม่, จัดการสินค้าให้ครบ, ขยายเป็น 4 สาขา, รื้อ Dashboard ใหม่) ล้วนเป็นสิ่งที่ไม่มีในร่างแรก ต้องเพิ่มระหว่างทาง — ถึงจะมี Change Request log กำกับไว้ครบ แต่การที่ scope ขยายบ่อยขนาดนี้สะท้อนว่าขั้น elicitation แรกยังไม่ครอบคลุมพอ
 
 **2.3 บั๊กที่เกิดจากสภาพแวดล้อม Windows หลายจุด**
 พบปัญหา encoding ซ้ำ ๆ กันหลายครั้งในบริบทต่างกัน: `print()` ข้อความไทยพังตอนรัน seed script (cp1252 default), `pip install -r requirements.txt` อ่านไฟล์ที่มี comment ภาษาไทยไม่ได้ด้วยเหตุผลเดียวกัน — เป็น class of bug เดียวกันที่เกิดซ้ำเพราะไม่มีใครตั้ง `PYTHONUTF8=1` เป็นค่า default ของ environment ตั้งแต่ต้น
