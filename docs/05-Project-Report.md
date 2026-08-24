@@ -179,7 +179,18 @@ frontend/src/
 
 ### Issues / Branches / PR / Code Reviews
 
-⚠️ **บันทึกตรงไปตรงมา:** ตลอดโครงงานจนถึงขณะเขียนรายงานนี้ ทุก commit ถูก push ตรงเข้า branch `main` **ไม่เคยมี feature branch, Pull Request, หรือ code review ผ่าน GitHub UI แม้แต่ครั้งเดียว** ขัดกับแผนสัปดาห์ 2 เดิมที่ตั้งใจจะวาง branching strategy ตั้งแต่ต้น — เป็นช่องว่างจริงที่ส่งผลโดยตรงต่อเกณฑ์ Code & Collaboration (ดู [Retrospective §2.6](04-Retrospective.md)) ทีมรับทราบและอยู่ระหว่างตัดสินใจว่าจะวาง workflow นี้อย่างไรสำหรับงานที่เหลือ
+⚠️ **บันทึกตรงไปตรงมา:** ตัวเลขจริง — **42 commit · 38 commit แรก push ตรงเข้า `main`** ไม่ผ่าน branch เลย เปลี่ยนมาใช้ feature branch + Pull Request ตั้งแต่ commit ที่ 39 เป็นต้นไป
+
+| | |
+|---|---|
+| Pull Request | **2 ใบ** — [#1](https://github.com/kit-sinlapasa/sme-inventory-system/pull/1) usability test (NFR-USE-01), [#2](https://github.com/kit-sinlapasa/sme-inventory-system/pull/2) แก้ N+1 query |
+| Merge commit | 2 ใบ อ้างอิงกลับไปหา PR ได้จาก `git log` |
+| CI บน PR | ผ่านทั้ง 2 job ทุกใบก่อน merge |
+| **Code review โดยคนที่ 2** | **ไม่มี — reviews = 0 ทั้ง 2 ใบ** ผู้เขียนกับผู้ merge เป็นคนเดียวกัน |
+
+**PR ที่ไม่มีใครรีวิวยังไม่ใช่ code review** สิ่งที่ได้จริงจาก 2 ใบนี้คือ branch hygiene + CI gate + บันทึกเหตุผลของการเปลี่ยนแปลง ส่วน **"Review" ของเกณฑ์ Code & Collaboration ยังไม่ถูกเติมเต็ม** และ AI นับเป็น reviewer คนที่สองไม่ได้เพราะเป็นผู้เขียนโค้ดเองเกือบทั้งหมด (เหตุผลเต็มใน [Retrospective §2.6](04-Retrospective.md))
+
+แม้จะเริ่มช้า การเปลี่ยนมาใช้ PR ก็ให้ผลจับต้องได้ทันที: การต้องเขียนคำอธิบาย PR บังคับให้เรียบเรียงว่า "พิสูจน์ยังไงว่าถูก" ซึ่งใน PR #2 นำไปสู่การเอา test ใหม่ไปรันกับโค้ดเก่าเพื่อดูว่ามัน fail จริงไหม แล้วพบว่า **test ตัวหนึ่งไม่ fail** เพราะดักฟัง database engine ผิดตัว — ถ้า push ตรงเข้า main เหมือน 38 ครั้งก่อนหน้า test ที่วัดอะไรไม่ได้เลยตัวนั้นก็คงเข้าระบบไปเรียบร้อย
 
 **Individual Contribution:** _[ทีมยังไม่ได้กรอกรายชื่อสมาชิกและ role ให้ครบ — ใส่ไว้เป็น placeholder ก่อน]_
 
@@ -232,7 +243,7 @@ frontend/src/
 
 ### Pipeline
 
-GitHub Actions (`.github/workflows/ci.yml`) — 2 job ขนานกัน: `backend-test` (lint → pytest กับ Postgres service container จริง) และ `frontend-build` (npm build) ทั้งคู่ต้องผ่านก่อน merge ได้ (แม้ปัจจุบันยังไม่มี branch protection บังคับเพราะไม่เคยใช้ PR — ดู §⑤)
+GitHub Actions (`.github/workflows/ci.yml`) — 2 job ขนานกัน: `backend-test` (lint → pytest กับ Postgres service container จริง) และ `frontend-build` (npm build) ทั้งคู่ต้องผ่านก่อน merge ได้ และผ่านจริงบน PR ทั้ง 2 ใบก่อน merge (แต่ยังไม่ได้ตั้ง **branch protection** บังคับที่ระดับ repo จึงยัง push ตรงเข้า `main` ได้อยู่ — ดู §⑤)
 
 ### Environment
 
