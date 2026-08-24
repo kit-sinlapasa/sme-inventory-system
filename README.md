@@ -38,6 +38,7 @@ python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activa
 pip install -r requirements.txt
 cp ../.env.example .env   # แก้ DATABASE_URL/JWT_SECRET ตามจริง
 alembic upgrade head       # สร้างตารางจาก ER Model
+python -m scripts.seed     # สร้าง user/branch ทดสอบ (ดูรหัสผ่านด้านล่าง)
 uvicorn app.main:app --reload --port 8000
 
 # 3. Frontend (terminal ใหม่)
@@ -65,10 +66,18 @@ npm run dev
 | Reorder point ต่อสาขา (FR-012) | 🟡 ตั้งค่า+แสดงผลทำแล้ว ยังไม่มีกลไกแจ้งเตือน (alert) จริง |
 | PR→PO flow (FR-009/010) | ✅ ใช้งานได้ + test — approve/reject กัน double-submit ด้วย pattern เดียวกับ ADR-002 |
 | Audit log (FR-011) | ✅ ใช้งานได้ + test — `GET /api/audit-log` ค้นย้อนหลังได้ (Admin เท่านั้น) |
-| Alerts จริง, หน้า Branch/Admin UI | 🔲 TODO สัปดาห์ 4+ — ดู endpoint list เต็มใน `docs/03-Architecture-Design.md` ส่วนที่ 5 |
+| Branch UI (สต็อก/บันทึกขาย/คำขอสั่งซื้อ) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
+| Admin UI (สต็อกรวม/สินค้า/รับสต็อก/คำขอ/audit log) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
+| Alerts จริง (push/email แจ้งเตือน) | 🔲 TODO สัปดาห์ 4+ — ดู endpoint list เต็มใน `docs/03-Architecture-Design.md` ส่วนที่ 5 |
 | Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน |
 
-> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 31 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
+> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 37 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) **UI ทั้ง Branch และ Admin ถูกคลิกทดสอบจริงผ่าน browser** ครบ flow: login → เพิ่มสินค้า → รับสต็อก → ขาย (S/N lookup) → เช็คประกันสาธารณะ → สร้าง/ปฏิเสธคำขอสั่งซื้อ → ดู audit log พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
+
+## Test Login (local dev, สร้างจาก `python -m scripts.seed`)
+| Role | Username | Password |
+|---|---|---|
+| Admin | `admin` | `admin1234` |
+| Branch Staff (สาขาสยาม) | `branch1` | `branch1234` |
 
 ## โครงสร้างโปรเจกต์
 ดูเหตุผลของโครงสร้างนี้ใน ADR-003 (`docs/03-Architecture-Design.md`)

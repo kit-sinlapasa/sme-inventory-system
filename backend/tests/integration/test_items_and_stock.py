@@ -55,3 +55,55 @@ def test_branch_staff_only_sees_own_branch_stock(
     assert all(r["branch_id"] == branch.id for r in rows)
     assert len(rows) == 1
     assert rows[0]["on_hand"] == 1  # เห็นแค่ของสาขาตัวเอง ไม่ใช่ 2
+
+
+def test_lookup_item_by_serial_own_branch(client, branch_staff_token, in_stock_item):
+    """US-04 — พนักงานกรอก S/N แล้วต้อง resolve เป็น item_id ก่อนขาย"""
+    resp = client.get(
+        f"/api/items/by-serial/{in_stock_item.serial_number}",
+        headers={"Authorization": f"Bearer {branch_staff_token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["id"] == in_stock_item.id
+
+
+def test_lookup_item_by_serial_other_branch_returns_404_not_403(
+    client, branch_staff_token, product, other_branch, db
+):
+    """NFR-SEC-02 — item ของสาขาอื่นต้องเป็น 404 (เหมือนไม่มี) ไม่ใช่ 403 (เผยว่ามีอยู่)"""
+    from app.models.item import Item
+
+    other_item = Item(
+        sku_id=product.id, serial_number="SN-LOOKUP-OTHER", branch_id=other_branch.id, status="InStock"
+    )
+    db.add(other_item)
+    db.commit()
+
+    resp = client.get(
+        "/api/items/by-serial/SN-LOOKUP-OTHER",
+        headers={"Authorization": f"Bearer {branch_staff_token}"},
+    )
+    assert resp.status_code == 404
+
+
+def test_lookup_unknown_serial_returns_404(client, branch_staff_token):
+    resp = client.get(
+        "/api/items/by-serial/SN-DOES-NOT-EXIST",
+        headers={"Authorization": f"Bearer {branch_staff_token}"},
+    )
+    assert resp.status_code == 404
+
+
+def test_admin_can_lookup_any_branch_item(client, admin_token, product, other_branch, db):
+    from app.models.item import Item
+
+    other_item = Item(
+        sku_id=product.id, serial_number="SN-ADMIN-LOOKUP", branch_id=other_branch.id, status="InStock"
+    )
+    db.add(other_item)
+    db.commit()
+
+    resp = client.get(
+        "/api/items/by-serial/SN-ADMIN-LOOKUP", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert resp.status_code == 200

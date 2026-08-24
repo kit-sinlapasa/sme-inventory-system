@@ -172,7 +172,7 @@
 | NFR-SEC-01 | — | US-01 | API response schema (ไม่มี field buyer) · STRIDE-I | `test_public_warranty.py::test_warranty_check_valid_serial_returns_status_without_buyer_info` | ✅ Implemented + Tested |
 | NFR-SEC-02 | P8 | US-05 | Middleware role-check ทุก endpoint · STRIDE-T | 4 test ยืนยัน 403 (products, branch_sku, sales, stock) | ✅ Implemented + Tested |
 | NFR-REL-01 | ความท้าทายโครงการ | US-04 | ADR-002 · Quality Attribute Scenario #1 | `test_sale_race_condition.py::test_only_one_concurrent_sale_succeeds` (10 concurrent thread) | ✅ Implemented + Tested |
-| NFR-USE-01 | P4, P10 | — (cross-cutting) | User Flow (3 persona) + Tailwind brand colors | ยังไม่มี usability test | 🟡 UI พื้นฐานทำแล้ว (หน้าเช็คประกัน) ส่วนที่เหลือรอสัปดาห์ 3+ |
+| NFR-USE-01 | P4, P10 | — (cross-cutting) | หน้าเว็บครบ 3 persona (Public/Branch/Admin) โทนขาว-ฟ้าตาม Tailwind brand colors | ทดสอบด้วยมือผ่าน browser จริง (login→ขาย→PR→approve→audit log ครบ loop) ยังไม่มี usability test แบบมีผู้ใช้จริงมาวัด task success rate | 🟡 ใช้งานได้ครบ verify ด้วยตาเปล่าแล้ว **แต่ยังไม่มี formal usability test ตาม spec เดิม** |
 | NFR-MAINT-01 | — | — (cross-cutting) | index บน `audit_logs.occurred_at`/`entity_id` มีแล้วใน DB แต่ยังไม่มี endpoint ให้ query | — | 🏗️ Design Complete |
 | NFR-PRIV-01 | CR-001 | US-04 | ยังไม่ implement `POST /api/admin/purge-old-buyer-data` | — | 🏗️ Design Complete (สัปดาห์ 7 ตามแผน) |
 
