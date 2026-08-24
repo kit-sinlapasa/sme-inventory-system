@@ -175,14 +175,19 @@ export default function AdminDashboard() {
       {data && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            {/* ใบเด่นใบเดียวของหน้า — ยอดขายคือตัวเลขที่คนเปิดหน้านี้มาดูก่อนเสมอ
+                ที่เหลือเป็นการ์ดพื้นอ่อน ถ้าทำเด่นหมดก็เท่ากับไม่มีใบไหนเด่น */}
             <KpiTile
+              hero
+              icon="sales"
               label={`ขายได้ใน ${days} วัน`}
               value={s.sold_in_period}
               delta={pctChange(s.sold_in_period, s.sold_prev_period)}
               sub={`ช่วงก่อนหน้า ${s.sold_prev_period} ชิ้น`}
             />
-            <KpiTile label="คงเหลือรวม" value={s.on_hand} sub="ชิ้นที่ยังไม่ถูกขาย" />
+            <KpiTile icon="stock" label="คงเหลือรวม" value={s.on_hand} sub="ชิ้นที่ยังไม่ถูกขาย" />
             <KpiTile
+              icon="alert"
               label="รายการใกล้หมด"
               value={s.low_stock_skus}
               tone={s.low_stock_skus > 0 ? 'critical' : null}
@@ -195,6 +200,7 @@ export default function AdminDashboard() {
               }
             />
             <KpiTile
+              icon="clock"
               label="ค้างสต็อกเกิน 180 วัน"
               value={s.dead_stock_items}
               tone={s.dead_stock_items > 0 ? 'warning' : null}

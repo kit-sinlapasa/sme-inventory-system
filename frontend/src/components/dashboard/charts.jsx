@@ -1,10 +1,11 @@
 import {
+  Area,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -68,7 +69,18 @@ export function DailySalesChart({ data, branchNames, hidden, onToggleBranch }) {
   return (
     <>
       <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={rows} margin={{ left: -20, right: 12, top: 4 }}>
+        <ComposedChart data={rows} margin={{ left: -20, right: 12, top: 4 }}>
+          {/* เติมพื้นใต้เส้นแบบไล่จางเฉพาะตอนเหลือเส้นเดียว — ถ้าหลายเส้นซ้อนกัน
+              พื้นจะทับกันจนอ่านเส้นไหนไม่ออก · การไล่จางนี้เป็นการตกแต่งแนวตั้ง
+              ไม่ได้เข้ารหัสค่าอะไร ต่างจากการไล่สีข้ามเซกเมนต์ในกราฟวงกลม */}
+          {visible.length === 1 && (
+            <defs>
+              <linearGradient id="dailyFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={colorOf(visible[0])} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={colorOf(visible[0])} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+          )}
           <CartesianGrid stroke={AXIS.grid} vertical={false} />
           <XAxis
             dataKey="day"
@@ -89,6 +101,17 @@ export function DailySalesChart({ data, branchNames, hidden, onToggleBranch }) {
             labelFormatter={(d) => new Date(d).toLocaleDateString('th-TH', { dateStyle: 'medium' })}
             formatter={(v, name) => [`${v} ชิ้น`, name]}
           />
+          {visible.length === 1 && (
+            <Area
+              type="monotone"
+              dataKey={visible[0]}
+              stroke="none"
+              fill="url(#dailyFill)"
+              connectNulls
+              legendType="none"
+              tooltipType="none"
+            />
+          )}
           {visible.map((name) => (
             <Line
               key={name}
@@ -102,7 +125,7 @@ export function DailySalesChart({ data, branchNames, hidden, onToggleBranch }) {
               connectNulls
             />
           ))}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
 
       {/* legend ต้องมีเสมอเมื่อมีมากกว่า 1 เส้น — ตัวตนของเส้นจะพึ่งสีอย่างเดียวไม่ได้

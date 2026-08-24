@@ -4,6 +4,7 @@
  * ที่แยกออกมาเป็นตาราง ไม่ทำเป็นกราฟ เพราะแต่ละแถวมีมากกว่า 4 ค่าที่ต้องอ่านพร้อมกัน
  * (คงเหลือ, จุดสั่งซื้อ, ความเร็วขาย, จะหมดในกี่วัน) — เกินกว่าที่กราฟจะสื่อได้ครบ
  */
+import { HERO_GRADIENT, TILE_ICON_BG } from './palette'
 
 export const RANGES = [
   { days: 7, label: '7 วัน' },
@@ -33,10 +34,40 @@ export function RangePicker({ value, onChange }) {
 }
 
 /**
+ * ไอคอนประจำการ์ด — ช่วยแยกการ์ดด้วยรูปทรง ไม่ใช่แค่ข้อความ
+ * ใช้ currentColor เพื่อให้เปลี่ยนสีตามพื้นการ์ดได้ (ขาวบน gradient / ฟ้าบนพื้นอ่อน)
+ */
+const ICONS = {
+  sales: 'M3 17l6-6 4 4 7-7M21 8v5h-5', // เส้นแนวโน้มขึ้น
+  stock: 'M3 7l9-4 9 4-9 4-9-4zm0 5l9 4 9-4M3 17l9 4 9-4', // กล่องซ้อน
+  alert: 'M12 3l9 16H3l9-16zm0 6v4m0 3v.5', // สามเหลี่ยมเตือน
+  clock: 'M12 21a9 9 0 100-18 9 9 0 000 18zm0-14v5l3 2', // นาฬิกา
+}
+
+function TileIcon({ name, className }) {
+  const d = ICONS[name]
+  if (!d) return null
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+         strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d={d} />
+    </svg>
+  )
+}
+
+/**
  * KPI tile — ตัวเลขเดียวไม่ต้องมีกราฟ (dataviz: "sometimes the answer is not a chart")
  * delta แสดงเฉพาะเมื่อมีข้อมูลช่วงก่อนหน้าให้เทียบจริง ไม่แต่งตัวเลขเทรนด์ขึ้นมาเอง
+ *
+ * `hero` = การ์ดใบเด่นพื้น gradient (ดู HERO_GRADIENT ใน palette.js)
+ * ใส่ใบเดียวต่อหน้าเท่านั้น — ถ้าทุกใบเด่นก็เท่ากับไม่มีใบไหนเด่น
+ *
+ * ข้อบังคับเรื่องตัวหนังสือบนพื้น gradient (วัดมาแล้ว ไม่ใช่ความรู้สึก):
+ * ต้องเป็น **ขาวทึบ 100%** ทุกบรรทัด ขาวโปร่งแสง 90% เหลือ contrast 4.34:1 ซึ่งตก AA
+ * จึงลดน้ำหนักด้วยขนาด/ความหนาแทน opacity · ป้าย delta ก็ใช้พื้นขาวทึบ + ตัวสีสถานะ
+ * ไม่ใช่พื้นขาวจาง + ตัวขาว (แบบหลังวัดได้ 3.78:1 ตก AA เพราะพื้นจางไปกลืนกับตัวหนังสือ)
  */
-export function KpiTile({ label, value, sub, delta, tone, invertDelta }) {
+export function KpiTile({ label, value, sub, delta, tone, invertDelta, hero, icon }) {
   const toneClass =
     tone === 'critical' ? 'text-[#d03b3b]' : tone === 'warning' ? 'text-[#a3690f]' : 'text-ink-text'
 
@@ -44,18 +75,53 @@ export function KpiTile({ label, value, sub, delta, tone, invertDelta }) {
   if (delta != null && Number.isFinite(delta)) {
     // invertDelta = ตัวเลขที่ "เพิ่มขึ้นแล้วแย่ลง" เช่นของค้างสต็อก
     const good = invertDelta ? delta < 0 : delta > 0
-    const color = delta === 0 ? 'text-ink-muted' : good ? 'text-[#0a7d0a]' : 'text-[#d03b3b]'
+    const hex = delta === 0 ? '#5f5f5f' : good ? '#0a7d0a' : '#d03b3b'
+    // ทิศทางสื่อด้วยลูกศรด้วย ไม่ได้พึ่งสีอย่างเดียว (คนตาบอดสี/พิมพ์ขาวดำยังอ่านได้)
     const arrow = delta === 0 ? '→' : delta > 0 ? '▲' : '▼'
-    deltaNode = (
-      <span className={`text-xs ${color}`}>
+    deltaNode = hero ? (
+      <span
+        className="text-xs font-medium rounded-full bg-white px-2 py-0.5 whitespace-nowrap"
+        style={{ color: hex }}
+      >
+        {arrow} {Math.abs(delta)}%
+      </span>
+    ) : (
+      <span className="text-xs whitespace-nowrap" style={{ color: hex }}>
         {arrow} {Math.abs(delta)}%
       </span>
     )
   }
 
+  if (hero) {
+    return (
+      <div className="rounded-xl p-4 relative overflow-hidden" style={{ background: HERO_GRADIENT }}>
+        {icon && (
+          <span className="absolute top-3 right-3 rounded-lg bg-white/25 p-1.5 text-white">
+            <TileIcon name={icon} className="w-4 h-4" />
+          </span>
+        )}
+        {/* ทุกบรรทัดเป็นขาวทึบ — แยกลำดับความสำคัญด้วยขนาดและความหนาแทนความโปร่งใส */}
+        <p className="text-xs text-white font-medium mb-1 pr-10">{label}</p>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <p className="text-3xl font-semibold text-white">{value}</p>
+          {deltaNode}
+        </div>
+        {sub && <p className="text-xs text-white mt-1">{sub}</p>}
+      </div>
+    )
+  }
+
   return (
-    <div className="rd-card p-4">
-      <p className="text-xs text-ink-muted mb-1">{label}</p>
+    <div className="rd-card p-4 relative">
+      {icon && (
+        <span
+          className="absolute top-3 right-3 rounded-lg p-1.5 text-ink-accent"
+          style={{ background: TILE_ICON_BG }}
+        >
+          <TileIcon name={icon} className="w-4 h-4" />
+        </span>
+      )}
+      <p className="text-xs text-ink-muted mb-1 pr-10">{label}</p>
       <div className="flex items-baseline gap-2 flex-wrap">
         <p className={`text-2xl font-semibold ${toneClass}`}>{value}</p>
         {deltaNode}
