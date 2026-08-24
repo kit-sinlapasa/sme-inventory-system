@@ -18,6 +18,11 @@ services:
     startCommand: "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9 # Render เดิมใช้ 3.14 เป็น default — pydantic-core ยังไม่มี
+        # prebuilt wheel สำหรับ 3.14 ทำให้ pip ต้อง compile จาก source ด้วย Rust/maturin
+        # ซึ่ง fail เพราะ cargo registry cache เขียนไม่ได้บน Render (read-only filesystem)
+        # ใช้ 3.11 ให้ตรงกับที่ทดสอบจริงทั้งหมด (local + GitHub Actions CI)
       - key: DATABASE_URL
         fromDatabase:
           name: sme-inventory-db
