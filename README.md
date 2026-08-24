@@ -67,7 +67,7 @@ npm run dev
 | PR→PO flow (FR-009/010) | ✅ ใช้งานได้ + test — approve/reject กัน double-submit ด้วย pattern เดียวกับ ADR-002 |
 | Audit log (FR-011) | ✅ ใช้งานได้ + test — `GET /api/audit-log` ค้นย้อนหลังได้ (Admin เท่านั้น) |
 | รูปสินค้าสูงสุด 5 รูปต่อ SKU (FR-013) | ✅ ใช้งานได้ + test — URL-based, จัดการผ่านหน้า Products (CR-007) |
-| KPI Dashboard สรุปภาพรวม (FR-014) | ✅ ใช้งานได้ — เสริมหน้า Dashboard เดิมทั้ง Admin/Branch ไม่มี endpoint ใหม่ (CR-008) |
+| KPI Dashboard สรุปภาพรวม (FR-014) | ✅ ใช้งานได้ — เสริมหน้า Dashboard เดิมทั้ง Admin/Branch ไม่มี endpoint ใหม่ (CR-008) — **ธีมมืด + กราฟจริง (CR-010)** เฉพาะหน้านี้ (nav บนยังโทนเดิม — known inconsistency) |
 | Branch UI (สต็อก/บันทึกขาย/คำขอสั่งซื้อ) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
 | Admin UI (สต็อกรวม/สินค้า/รับสต็อก/คำขอ/audit log) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
 | Seed data สาธิต (CR-009) | ✅ 60 สินค้า (6 หมวดหมู่ x 10) พร้อม Item/S/N รับเข้าจริง 2 สาขา, ขายบางส่วน, PR ครบ 3 สถานะ |
