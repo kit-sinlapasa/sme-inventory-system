@@ -21,6 +21,7 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
 from passlib.context import CryptContext  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+from app.config import settings  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
 from app.models.branch import Branch  # noqa: E402
 from app.models.branch_sku import BranchSKU  # noqa: E402
@@ -237,6 +238,21 @@ BRANCH_PROFILES = [
 ]
 
 
+def _describe_target() -> str:
+    """
+    บอกว่ากำลังจะลงฐานข้อมูลไหน โดย**ไม่แสดงรหัสผ่าน**
+
+    จำเป็นเพราะที่ผ่านมาสคริปต์ไม่เคยบอกเป้าหมายเลย — รันผิดฐาน (เช่นตั้ง env var
+    ไม่ติดแล้วตกไปใช้ค่า default ที่ชี้ localhost) กับรันถูกฐาน ผลลัพธ์บนหน้าจอ
+    เหมือนกันทุกบรรทัด ทำให้เข้าใจว่า seed ขึ้น production แล้วทั้งที่ยังเป็นชุดเดิมอยู่
+    """
+    from urllib.parse import urlparse
+
+    u = urlparse(settings.DATABASE_URL)
+    where = "🖥️  เครื่องนี้ (local)" if u.hostname in ("localhost", "127.0.0.1") else "☁️  รีโมต"
+    return f"{where}  host={u.hostname or '?'}  db={(u.path or '/?').lstrip('/')}  user={u.username or '?'}"
+
+
 def _wipe(db):
     """
     ล้างทุกตาราง **พร้อมรีเซ็ตลำดับ id กลับไปเริ่มที่ 1**
@@ -259,6 +275,8 @@ def _wipe(db):
 
 
 def seed(reset: bool = False):
+    # พิมพ์เป้าหมายก่อนแตะข้อมูลใด ๆ เสมอ ทั้งตอนสำเร็จและตอนถูกปฏิเสธ
+    print(f"เป้าหมาย: {_describe_target()}\n")
     db = SessionLocal()
     rng = random.Random(42)  # deterministic — รันซ้ำได้ผลเดิมถ้าลบ DB แล้วรันใหม่
     try:
@@ -460,7 +478,7 @@ def seed(reset: bool = False):
                     db.add(PurchaseOrder(pr_id=pr.id, created_by=admin.id))
                     db.commit()
 
-        print("Seed สำเร็จ:")
+        print(f"Seed สำเร็จ ที่ {_describe_target()}")
         print("  Admin       -> username: admin      password: admin1234   (ดูแลทุกสาขา, ขายเองไม่ได้)")
         for branch, staff, profile in branches:
             stock = (
