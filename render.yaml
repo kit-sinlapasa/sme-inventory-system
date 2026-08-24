@@ -15,7 +15,10 @@ services:
     plan: free
     rootDir: backend
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # ต้องใช้ `python -m alembic` ไม่ใช่ `alembic` เฉย ๆ — bare console-script ไม่เติม
+    # CWD เข้า sys.path ให้อัตโนมัติ ทำให้ `import app.models` ใน env.py หา `app` ไม่เจอ
+    # (ตรวจสอบซ้ำจริงแล้วว่า uvicorn ไม่มีปัญหานี้ ปล่อยเป็น bare command ได้ตามเดิม)
+    startCommand: "python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
