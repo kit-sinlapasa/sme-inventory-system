@@ -65,6 +65,18 @@ export default function RecordSale() {
     }
   }
 
+  // เลือกจากตารางแทนการพิมพ์ S/N — ข้อมูลชิ้นนั้นมีอยู่ในตารางแล้ว ไม่ต้องยิง lookup ซ้ำ
+  // (ยังคง endpoint lookup ไว้สำหรับกรณีสแกนบาร์โค้ด/พิมพ์เองที่ของอาจไม่อยู่ใน 200 แถวแรก)
+  function selectFromTable(row) {
+    if (row.status !== 'InStock') return // ขายไปแล้ว กดไม่ได้
+    setLookupError('')
+    setSaleError('')
+    setSaleResult(null)
+    setSerial(row.serial_number)
+    setItem(row)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   async function handleConfirmSale(e) {
     e.preventDefault()
     setLoading(true)
@@ -189,12 +201,15 @@ export default function RecordSale() {
 
       <div className="mt-8">
         <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
-          <h2 className="rd-title">
-            หมายเลขซีเรียล (S/N) ในสาขา
-            <span className="ml-2 text-sm font-normal text-ink-muted">
-              พร้อมขาย {inStockCount} ชิ้น · ขายแล้ว {soldCount} ชิ้น
-            </span>
-          </h2>
+          <div>
+            <h2 className="rd-title">
+              หมายเลขซีเรียล (S/N) ในสาขา
+              <span className="ml-2 text-sm font-normal text-ink-muted">
+                พร้อมขาย {inStockCount} ชิ้น · ขายแล้ว {soldCount} ชิ้น
+              </span>
+            </h2>
+            <p className="text-xs text-ink-muted mt-1">คลิกแถวที่พร้อมขายเพื่อบันทึกการขายได้เลย</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 mb-3 flex-wrap">
@@ -242,24 +257,34 @@ export default function RecordSale() {
                   </td>
                 </tr>
               ) : (
-                visibleItems.map((i) => (
-                  <tr key={i.id} className="rd-tr">
-                    <td className="rd-td font-mono text-xs">{i.serial_number}</td>
-                    <td className="rd-td text-ink-muted">{i._label}</td>
-                    <td className="rd-td">
-                      <span
-                        className={`rd-badge ${
-                          i.status === 'InStock' ? 'rd-badge-approved' : 'rd-badge-muted'
+                visibleItems.map((i) => {
+                  const sellable = i.status === 'InStock'
+                  return (
+                    <tr
+                      key={i.id}
+                      onClick={() => selectFromTable(i)}
+                      title={sellable ? 'คลิกเพื่อบันทึกขายชิ้นนี้' : 'ขายไปแล้ว'}
+                      className={`rd-tr ${sellable ? 'cursor-pointer hover:bg-ink-accentSoft' : 'opacity-60'}`}
+                    >
+                      <td
+                        className={`rd-td font-mono text-xs ${
+                          sellable ? 'text-ink-accent underline decoration-dotted underline-offset-2' : ''
                         }`}
                       >
-                        {i.status === 'InStock' ? 'พร้อมขาย' : 'ขายแล้ว'}
-                      </span>
-                    </td>
-                    <td className="rd-td text-ink-muted whitespace-nowrap">
-                      {new Date(i.received_at).toLocaleString('th-TH')}
-                    </td>
-                  </tr>
-                ))
+                        {i.serial_number}
+                      </td>
+                      <td className="rd-td text-ink-muted">{i._label}</td>
+                      <td className="rd-td">
+                        <span className={`rd-badge ${sellable ? 'rd-badge-approved' : 'rd-badge-muted'}`}>
+                          {sellable ? 'พร้อมขาย' : 'ขายแล้ว'}
+                        </span>
+                      </td>
+                      <td className="rd-td text-ink-muted whitespace-nowrap">
+                        {new Date(i.received_at).toLocaleString('th-TH')}
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
