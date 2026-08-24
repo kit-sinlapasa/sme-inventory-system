@@ -3,7 +3,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.limiter import limiter
-from app.routers import auth, sales, public
+from app.routers import auth, public, sales
 
 app = FastAPI(
     title="SME Inventory & Order Management API",

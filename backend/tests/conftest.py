@@ -11,12 +11,12 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.main import app
-from app.database import Base, get_db
 from app.config import settings
+from app.database import Base
+from app.main import app
 from app.models.branch import Branch
-from app.models.product import Product
 from app.models.item import Item
+from app.models.product import Product
 from app.models.user import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

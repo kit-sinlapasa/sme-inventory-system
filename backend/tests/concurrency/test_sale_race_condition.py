@@ -12,7 +12,6 @@ Response: ระบบอนุญาตให้สำเร็จได้เ�
 import concurrent.futures
 import uuid
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -70,8 +69,8 @@ def test_selling_already_sold_item_returns_409(client, branch_staff_token, in_st
 def test_branch_staff_cannot_sell_item_from_other_branch(client, branch_staff_token, db):
     """NFR-SEC-02 ทางอ้อม — item ที่ branch_id ไม่ตรงกับ token ต้องขายไม่ได้"""
     from app.models.branch import Branch
-    from app.models.product import Product
     from app.models.item import Item
+    from app.models.product import Product
 
     other_branch = Branch(name="สาขาอื่น")
     db.add(other_branch)

@@ -2,8 +2,9 @@
 Integration test สำหรับ FR-006 + NFR-SEC-01
 ตรงกับ US-01 Acceptance Criteria (docs/01-Requirements-Package.md)
 """
-from app.models.sale import Sale
 from datetime import datetime, timedelta, timezone
+
+from app.models.sale import Sale
 
 
 def test_warranty_check_no_auth_required(client, in_stock_item, db, branch_staff_token):

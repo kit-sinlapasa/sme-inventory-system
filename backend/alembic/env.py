@@ -2,11 +2,10 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
+import app.models  # noqa: F401 — ต้อง import เพื่อให้ Base.metadata เห็นทุก model
 from alembic import context
-
 from app.config import settings
 from app.database import Base
-import app.models  # noqa: F401 — ต้อง import เพื่อให้ Base.metadata เห็นทุก model
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
