@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # pyflakes + pycodestyle + import sort
+ignore = ["E501"]  # ปล่อยบรรทัดยาวได้บ้าง — โฟกัสที่ correctness ไม่ใช่ style เป๊ะ
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
