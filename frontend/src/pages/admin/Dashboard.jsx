@@ -211,7 +211,12 @@ export default function AdminDashboard() {
                         <td className="px-4 py-3 text-ink-accent underline decoration-dotted underline-offset-2">
                           {row.brand} {row.model}
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-ink-text">{row.on_hand}</td>
+                        <td className="px-4 py-3 text-right font-medium text-ink-text whitespace-nowrap">
+                          {row.on_hand}
+                          {/* เตือนเป็นข้อความด้วย ไม่ใช่แค่พื้นแถวสีแดง — สีอย่างเดียวคนตาบอดสี
+                              หรือคนพิมพ์เอกสารขาวดำจะไม่เห็น (หลักเดียวกับหน้าสาขา) */}
+                          {low && <span className="ml-2 text-[#d03b3b] text-xs">⚠ ใกล้หมด</span>}
+                        </td>
                         <td className="px-4 py-3 text-right text-ink-muted">{row.reorder_point ?? '—'}</td>
                       </tr>
                     )
