@@ -1,4 +1,8 @@
+[![CI](https://github.com/kit-sinlapasa/sme-inventory-system/actions/workflows/ci.yml/badge.svg)](https://github.com/kit-sinlapasa/sme-inventory-system/actions/workflows/ci.yml)
+
 # SME Inventory & Order Management (ชื่อชั่วคราว)
+
+Repo: https://github.com/kit-sinlapasa/sme-inventory-system
 
 ระบบจัดการสต็อกและตรวจสอบการรับประกันอะไหล่คอมพิวเตอร์แบบรายชิ้น (serialized inventory)
 โครงงานปลายภาค NC221 วิศวกรรมซอฟต์แวร์ — ม.หอการค้าไทย
