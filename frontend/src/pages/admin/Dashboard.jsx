@@ -268,7 +268,7 @@ function ChartCard({ title, data, color, colors }) {
               tickLine={false}
             />
             <Tooltip
-              cursor={{ fill: '#f4f0ff' }}
+              cursor={{ fill: '#eaf2fd' }}
               contentStyle={{ background: '#fcfcfb', border: '1px solid #e5e7eb', borderRadius: 8, color: '#0b0b0b' }}
             />
             <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
