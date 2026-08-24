@@ -1,5 +1,6 @@
 # สัปดาห์ 7 (hardening) — เวอร์ชันด้านล่างอัปเดตจาก pip-audit จริง (ดู docs/02-AI-Usage-Log.md)
-# แก้ CVE ที่มี fix version — ทดสอบแล้วว่า 47/47 test ผ่านหลังอัปเกรดจริง ไม่ใช่แค่ bump เฉย ๆ
+# แก้ CVE ที่มี fix version — ทดสอบแล้วว่า test suite ทั้งหมดผ่านหลังอัปเกรดจริง (47 ตัวตอนอัปเกรด,
+# ตอนนี้เพิ่มเป็น 57 ตัวหลัง entry ถัดไปในเซสชันเดียวกัน) ไม่ใช่แค่ bump เฉย ๆ
 fastapi==0.135.0  # เดิม 0.115.0 — ต้อง jump ใหญ่เพราะ starlette CVE ใหม่สุดต้องการ fastapi ที่ไม่ล็อก starlette<0.47
 starlette==1.6.0  # pin ตรง (เดิมเป็น transitive dep) — เวอร์ชันล่าสุด แก้ CVE starlette ที่พบทั้งหมดจาก pip-audit
 uvicorn[standard]==0.30.6
