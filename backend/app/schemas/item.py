@@ -28,5 +28,6 @@ class StockLevel(BaseModel):
     brand: str
     model: str
     branch_id: int
+    branch_name: str  # แสดงชื่อสาขาเต็มใน UI แทน "สาขา #1" ที่ผู้ใช้อ่านแล้วไม่รู้ว่าสาขาไหน
     on_hand: int
     reorder_point: int | None = None  # FR-012 — เห็นได้เฉพาะ role ที่มีสิทธิ์

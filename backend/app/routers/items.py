@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,36 @@ from app.services.audit import write_audit_log
 from app.services.stock_alerts import evaluate_low_stock_alert
 
 router = APIRouter(prefix="/api/items", tags=["items"])
+
+
+@router.get("", response_model=list[ItemOut])
+def list_items(
+    sku_id: int | None = None,
+    branch_id: int | None = None,
+    item_status: str | None = Query(None, alias="status", description="InStock | Sold"),
+    limit: int = Query(200, le=500, description="กันดึงทั้งคลังทีเดียวโดยไม่ตั้งใจ"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_any_role),
+):
+    """
+    FR-002/FR-003 — ดูรายการสินค้ารายชิ้น (S/N) ของ SKU หนึ่ง ใช้ในหน้ารายละเอียดสินค้า
+    ระบบนี้เป็น serialized inventory แต่เดิมไม่มีทางไล่ดู S/N ที่มีอยู่จริงเลย
+    (มีแค่ lookup ทีละตัวผ่าน /by-serial) — endpoint นี้ปิดช่องว่างนั้น
+
+    NFR-SEC-02 — Branch เห็นได้เฉพาะของสาขาตัวเอง บังคับที่ server ไม่ว่า client
+    จะส่ง branch_id มาเป็นอะไรก็ตาม (pattern เดียวกับ /api/stock)
+    """
+    effective_branch_id = current_user.branch_id if current_user.role == "BranchStaff" else branch_id
+
+    query = db.query(Item)
+    if sku_id is not None:
+        query = query.filter(Item.sku_id == sku_id)
+    if effective_branch_id is not None:
+        query = query.filter(Item.branch_id == effective_branch_id)
+    if item_status is not None:
+        query = query.filter(Item.status == item_status)
+
+    return query.order_by(Item.received_at.desc(), Item.id.desc()).limit(limit).all()
 
 
 @router.get("/by-serial/{serial_number}", response_model=ItemOut)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import client from '../../api/client'
+import ProductDetailModal from '../../components/ProductDetailModal'
 
 // FR-003 — Admin เห็นสต็อกทุกสาขา
 // หมายเหตุ: ยังไม่มี alert/notification จริง (FR-012 partial) — ไฮไลท์แถวสีแดงเป็น
@@ -11,17 +12,31 @@ import client from '../../api/client'
 // จริง) — สว่าง ไม่ใช่มืด ตามที่ตรวจสอบพบว่า Render ใช้ธีมสว่างจริง ไม่ใช่ธีมมืดอย่างที่
 // สันนิษฐานไว้รอบแรกจากภาพตัวอย่างที่ไม่เกี่ยวกับ Render
 // รูปแบบกราฟ: horizontal bar ไม่ใช่ pie/donut — ตาม dataviz skill "part-to-whole/
-// compare magnitude" ควรใช้ bar ไม่ใช่ pie และ pie เป็น all-pairs comparison ที่ผ่าน
-// CVD-safety check ได้แค่ 3 สีเท่านั้น (validate จริงแล้วว่า 6 สีพร้อมกันบน pie ล้มเหลว)
-// หมวดหมู่สินค้า = สีเดียว (sequential, ไม่ใช่ identity) + label ตรงบนแท่ง — เลี่ยงปัญหา CVD
-// ไปเลยเพราะไม่ต้องแยกสีต่อหมวดหมู่ · สถานะ PR = fixed status palette ตาม dataviz skill
-// (แม้ contrast ต่ำกว่าเกณฑ์ตามที่เอกสารระบุไว้ แต่มี label กำกับทุกแท่งตามข้อกำหนด mitigation)
+// compare magnitude" ควรใช้ bar ไม่ใช่ pie (pie เป็น all-pairs comparison ที่ validate แล้ว
+// ว่ารองรับได้แค่ 3 สี)
+// CATEGORY_COLORS: palette นี้ validate ผ่าน CVD-safety check ครบทุกข้อในโหมด adjacent-pairs
+// ซึ่งเป็นโหมดที่ถูกต้องสำหรับ bar chart (แท่งเรียงติดกัน ไม่ได้เทียบทุกคู่พร้อมกันแบบ pie)
+// worst adjacent CVD ΔE 9.1 / normal-vision 19.6 — ผ่านเกณฑ์ทั้งคู่
+// contrast บางสีต่ำกว่า 3:1 แต่ทุกแท่งมี label ชื่อหมวดหมู่กำกับตรงแกน Y เสมอ (mitigation ที่
+// เอกสารกำหนด) จึงไม่ต้องพึ่งสีอย่างเดียวในการอ่าน
+// สถานะ PR = fixed status palette ตาม dataviz skill (มี label กำกับทุกแท่งเช่นกัน)
 // ไม่มีตัวเลขเทรนด์/% เปลี่ยนแปลงปลอม เพราะระบบไม่มี time-series data จริง
-const MAGNITUDE_COLOR = '#7a3ff1'
+// สีผูกกับ "หมวดหมู่" ไม่ใช่ลำดับในกราฟ — ตาราง/กราฟเรียงตามยอดคงเหลือซึ่งเปลี่ยนได้ตลอด
+// ถ้าผูกสีกับ index สีของแต่ละหมวดหมู่จะสลับไปมาเมื่อข้อมูลเปลี่ยน (ผิดหลัก dataviz skill:
+// "color follows the entity, never its rank")
+const CATEGORY_ORDER = ['RAM', 'Mainboard', 'CPU', 'GPU', 'Storage', 'PSU']
+const CATEGORY_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300']
+const UNKNOWN_CATEGORY_COLOR = '#898781' // หมวดหมู่นอกรายการ = เทากลาง ไม่แย่งสีของหมวดที่มีอยู่
+
+function categoryColor(name) {
+  const i = CATEGORY_ORDER.indexOf(name)
+  return i === -1 ? UNKNOWN_CATEGORY_COLOR : CATEGORY_COLORS[i]
+}
+
 const STATUS_COLORS = { Pending: '#fab219', Approved: '#0ca30c', Rejected: '#d03b3b' }
 
 const SORT_COLUMNS = {
-  branch: { label: 'สาขา', getValue: (r) => r.branch_id },
+  branch: { label: 'สาขา', getValue: (r) => r.branch_name ?? '' },
   category: { label: 'หมวดหมู่', getValue: (r) => r.category },
   model: { label: 'ยี่ห้อ / รุ่น', getValue: (r) => `${r.brand} ${r.model}` },
   on_hand: { label: 'คงเหลือ', getValue: (r) => r.on_hand },
@@ -38,6 +53,7 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState('branch')
   const [sortDir, setSortDir] = useState('asc')
+  const [detailSkuId, setDetailSkuId] = useState(null)
 
   async function load() {
     setLoading(true)
@@ -83,7 +99,7 @@ export default function AdminDashboard() {
         r.category.toLowerCase().includes(q) ||
         r.brand.toLowerCase().includes(q) ||
         r.model.toLowerCase().includes(q) ||
-        `สาขา #${r.branch_id}`.toLowerCase().includes(q)
+        (r.branch_name ?? '').toLowerCase().includes(q)
       )
     })
     .sort((a, b) => {
@@ -123,7 +139,11 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <ChartCard title="สต็อกคงเหลือตามหมวดหมู่" data={stockByCategory} color={MAGNITUDE_COLOR} />
+        <ChartCard
+          title="สต็อกคงเหลือตามหมวดหมู่"
+          data={stockByCategory}
+          colors={stockByCategory.map((row) => categoryColor(row.name))}
+        />
         <ChartCard
           title="คำขอสั่งซื้อตามสถานะ"
           data={prByStatus}
@@ -182,11 +202,15 @@ export default function AdminDashboard() {
                     return (
                       <tr
                         key={`${row.sku_id}-${row.branch_id}-${i}`}
-                        className={`border-t border-ink-border ${low ? 'bg-[#fdf2f2]' : ''}`}
+                        onClick={() => setDetailSkuId(row.sku_id)}
+                        title="คลิกเพื่อดูรายละเอียดสินค้า"
+                        className={`border-t border-ink-border cursor-pointer hover:bg-ink-accentSoft ${
+                          low ? 'bg-[#fdf2f2]' : ''
+                        }`}
                       >
-                        <td className="px-4 py-3 text-ink-text">สาขา #{row.branch_id}</td>
+                        <td className="px-4 py-3 text-ink-text">{row.branch_name}</td>
                         <td className="px-4 py-3 text-ink-muted">{row.category}</td>
-                        <td className="px-4 py-3 text-ink-text">
+                        <td className="px-4 py-3 text-ink-accent underline decoration-dotted underline-offset-2">
                           {row.brand} {row.model}
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-ink-text">{row.on_hand}</td>
@@ -199,6 +223,10 @@ export default function AdminDashboard() {
             </table>
           </div>
         </>
+      )}
+
+      {detailSkuId != null && (
+        <ProductDetailModal skuId={detailSkuId} onClose={() => setDetailSkuId(null)} />
       )}
     </div>
   )

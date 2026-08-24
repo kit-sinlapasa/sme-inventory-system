@@ -8,10 +8,16 @@ const STATUS_COLOR = {
   Rejected: 'bg-red-100 text-red-800',
 }
 
+// คำขอที่ยังไม่ถูกตัดสินใจจะไม่มี decided_at — แสดง "—" แทน Invalid Date
+function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString('th-TH') : '—'
+}
+
 // FR-010, US-07 — Admin ตรวจสอบและอนุมัติ/ปฏิเสธคำขอสั่งซื้อ
 export default function PurchaseRequests() {
   const [requests, setRequests] = useState([])
   const [products, setProducts] = useState([])
+  const [branches, setBranches] = useState([])
   const [filter, setFilter] = useState('Pending')
   const [error, setError] = useState('')
   const [rejectingId, setRejectingId] = useState(null)
@@ -19,9 +25,19 @@ export default function PurchaseRequests() {
 
   async function load() {
     const url = filter ? `/purchase-requests?status=${filter}` : '/purchase-requests'
-    const [reqRes, prodRes] = await Promise.all([client.get(url), client.get('/products')])
+    const [reqRes, prodRes, branchRes] = await Promise.all([
+      client.get(url),
+      client.get('/products'),
+      client.get('/branches'),
+    ])
     setRequests(reqRes.data)
     setProducts(prodRes.data)
+    setBranches(branchRes.data)
+  }
+
+  function branchLabel(branch_id) {
+    const b = branches.find((b) => b.id === branch_id)
+    return b ? b.name : `สาขา #${branch_id}`
   }
 
   useEffect(() => {
@@ -85,8 +101,11 @@ export default function PurchaseRequests() {
                 <div>
                   <p className="font-medium text-brand-900">{productLabel(r.sku_id)}</p>
                   <p className="text-sm text-gray-500">
-                    จำนวน {r.quantity} · สาขา #{r.branch_id} ·{' '}
-                    {new Date(r.requested_at).toLocaleString('th-TH')}
+                    จำนวน {r.quantity} · {branchLabel(r.branch_id)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    ขอเมื่อ {formatDateTime(r.requested_at)}
+                    {r.decided_at && ` · ตัดสินใจเมื่อ ${formatDateTime(r.decided_at)}`}
                   </p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded ${STATUS_COLOR[r.status]}`}>

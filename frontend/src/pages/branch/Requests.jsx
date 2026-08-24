@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import client from '../../api/client'
 
 const STATUS_LABEL = { Pending: 'รอดำเนินการ', Approved: 'อนุมัติแล้ว', Rejected: 'ปฏิเสธ' }
+
+// คำขอที่ยังไม่ถูกตัดสินใจจะไม่มี decided_at — แสดง "—" แทนที่จะโชว์ Invalid Date
+function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString('th-TH') : '—'
+}
+
 const STATUS_COLOR = {
   Pending: 'bg-yellow-100 text-yellow-800',
   Approved: 'bg-green-100 text-green-800',
@@ -102,7 +108,9 @@ export default function Requests() {
                 <tr>
                   <th className="text-left px-4 py-2">สินค้า</th>
                   <th className="text-right px-4 py-2">จำนวน</th>
+                  <th className="text-left px-4 py-2">วันที่ขอ</th>
                   <th className="text-left px-4 py-2">สถานะ</th>
+                  <th className="text-left px-4 py-2">วันที่ตัดสินใจ</th>
                   <th className="text-left px-4 py-2">เหตุผล (ถ้าปฏิเสธ)</th>
                 </tr>
               </thead>
@@ -111,11 +119,13 @@ export default function Requests() {
                   <tr key={r.id} className="border-t border-brand-50">
                     <td className="px-4 py-2">{productLabel(r.sku_id)}</td>
                     <td className="px-4 py-2 text-right">{r.quantity}</td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(r.requested_at)}</td>
                     <td className="px-4 py-2">
                       <span className={`text-xs px-2 py-1 rounded ${STATUS_COLOR[r.status]}`}>
                         {STATUS_LABEL[r.status] ?? r.status}
                       </span>
                     </td>
+                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(r.decided_at)}</td>
                     <td className="px-4 py-2 text-gray-500">{r.reject_reason ?? '—'}</td>
                   </tr>
                 ))}

@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import client from '../../api/client'
+import ProductDetailModal from '../../components/ProductDetailModal'
 
 // FR-003, FR-008 — ดูสต็อกเรียลไทม์ของสาขาตัวเอง (server บังคับ scope ให้แล้ว)
 // FR-014 (CR-008) — KPI card สรุปภาพรวมของสาขาตัวเอง เสริมของหน้าเดิม
 // CR-010 — ธีมหน้านี้เท่านั้น อิงสีจริงจาก dashboard.render.com (สว่าง ไม่ใช่มืด — ดูเหตุผล
 // ที่แก้ไขใน docs/01-Requirements-Package.md)
 // รูปแบบกราฟ: horizontal bar ไม่ใช่ pie/donut — ตาม dataviz skill "part-to-whole/compare
-// magnitude" ควรใช้ bar และ pie เป็น all-pairs comparison ที่ผ่าน CVD-safety check ได้แค่ 3 สี
-// (validate จริงแล้วว่า 6 สีพร้อมกันบน pie ล้มเหลว) หมวดหมู่สินค้า = สีเดียว + label บนแท่ง
-// สถานะ PR = fixed status palette ตาม dataviz skill (มี label กำกับทุกแท่งตาม mitigation rule)
+// magnitude" ควรใช้ bar (pie เป็น all-pairs comparison ที่รองรับได้แค่ 3 สี)
+// CATEGORY_COLORS validate ผ่าน CVD-safety check ครบในโหมด adjacent-pairs ซึ่งถูกต้องสำหรับ
+// bar chart · ทุกแท่งมี label ชื่อหมวดหมู่กำกับตรงแกน Y (mitigation สำหรับ contrast ที่ต่ำ)
+// สีผูกกับหมวดหมู่ ไม่ใช่ลำดับในกราฟ — กราฟเรียงตามยอดคงเหลือที่เปลี่ยนได้ ถ้าผูกกับ index
+// สีจะสลับไปมา (ผิดหลัก "color follows the entity, never its rank")
 // ไม่มีตัวเลขเทรนด์ปลอม (ระบบไม่เก็บ time-series จริง)
-const MAGNITUDE_COLOR = '#7a3ff1'
+const CATEGORY_ORDER = ['RAM', 'Mainboard', 'CPU', 'GPU', 'Storage', 'PSU']
+const CATEGORY_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300']
+const UNKNOWN_CATEGORY_COLOR = '#898781'
+
+function categoryColor(name) {
+  const i = CATEGORY_ORDER.indexOf(name)
+  return i === -1 ? UNKNOWN_CATEGORY_COLOR : CATEGORY_COLORS[i]
+}
+
 const STATUS_COLORS = { Pending: '#fab219', Approved: '#0ca30c', Rejected: '#d03b3b' }
 
 const SORT_COLUMNS = {
@@ -30,6 +41,7 @@ export default function BranchDashboard() {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState('category')
   const [sortDir, setSortDir] = useState('asc')
+  const [detailSkuId, setDetailSkuId] = useState(null)
 
   async function load() {
     setLoading(true)
@@ -106,7 +118,11 @@ export default function BranchDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <ChartCard title="สต็อกคงเหลือตามหมวดหมู่" data={stockByCategory} color={MAGNITUDE_COLOR} />
+        <ChartCard
+          title="สต็อกคงเหลือตามหมวดหมู่"
+          data={stockByCategory}
+          colors={stockByCategory.map((row) => categoryColor(row.name))}
+        />
         <ChartCard
           title="คำขอสั่งซื้อตามสถานะ"
           data={prByStatus}
@@ -160,9 +176,16 @@ export default function BranchDashboard() {
                   visibleStock.map((row) => {
                     const low = row.reorder_point != null && row.on_hand <= row.reorder_point
                     return (
-                      <tr key={row.sku_id} className={`border-t border-ink-border ${low ? 'bg-[#fdf2f2]' : ''}`}>
+                      <tr
+                        key={row.sku_id}
+                        onClick={() => setDetailSkuId(row.sku_id)}
+                        title="คลิกเพื่อดูรายละเอียดสินค้า"
+                        className={`border-t border-ink-border cursor-pointer hover:bg-ink-accentSoft ${
+                          low ? 'bg-[#fdf2f2]' : ''
+                        }`}
+                      >
                         <td className="px-4 py-3 text-ink-muted">{row.category}</td>
-                        <td className="px-4 py-3 text-ink-text">
+                        <td className="px-4 py-3 text-ink-accent underline decoration-dotted underline-offset-2">
                           {row.brand} {row.model}
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-ink-text">
@@ -178,6 +201,10 @@ export default function BranchDashboard() {
             </table>
           </div>
         </>
+      )}
+
+      {detailSkuId != null && (
+        <ProductDetailModal skuId={detailSkuId} onClose={() => setDetailSkuId(null)} />
       )}
     </div>
   )

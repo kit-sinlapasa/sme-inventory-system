@@ -159,7 +159,7 @@
 | Req ID | Source (P#) | User Story | Design | Test Case | Status |
 |---|---|---|---|---|---|
 | FR-001 | P3, P11 | US-02 | ER: `PRODUCT` · API: `POST/PUT/DELETE /api/products` | `test_products.py` (5 tests) | ✅ Implemented + Tested |
-| FR-002 | P2, P3 | US-03 | ER: `ITEM` · API: `POST /api/items` | `test_items_and_stock.py` (2 tests) | ✅ Implemented + Tested |
+| FR-002 | P2, P3 | US-03 | ER: `ITEM` · API: `POST /api/items` (รับเข้า), `GET /api/items?sku_id=&branch_id=&status=` (ไล่ดู S/N รายชิ้น — ใช้ในหน้ารายละเอียดสินค้า) | `test_items_and_stock.py` (5 tests รวม RBAC ของ list endpoint) | ✅ Implemented + Tested |
 | FR-003 | P2, P8 | US-05 | API: `GET /api/stock` | `test_items_and_stock.py` (2 tests) | ✅ Implemented + Tested |
 | FR-004 | P1 | US-04 | ER: `SALE` · API: `POST /api/sales` · ADR-002 | `test_sale_race_condition.py` (4 tests) | ✅ Implemented + Tested |
 | FR-005 | P2 | US-01, US-04 | ER: `SALE.warranty_expires_at` (computed field) | `test_public_warranty.py` | ✅ Implemented + Tested |

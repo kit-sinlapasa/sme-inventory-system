@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import require_any_role
+from app.models.branch import Branch
 from app.models.branch_sku import BranchSKU
 from app.models.item import Item
 from app.models.product import Product
@@ -34,11 +35,13 @@ def get_stock(
             Product.brand,
             Product.model,
             Item.branch_id,
+            Branch.name.label("branch_name"),
             func.count(Item.id).label("on_hand"),
         )
         .join(Item, Item.sku_id == Product.id)
+        .join(Branch, Branch.id == Item.branch_id)
         .filter(Item.status == "InStock")
-        .group_by(Product.id, Product.category, Product.brand, Product.model, Item.branch_id)
+        .group_by(Product.id, Product.category, Product.brand, Product.model, Item.branch_id, Branch.name)
     )
 
     if effective_branch_id is not None:
@@ -63,6 +66,7 @@ def get_stock(
                 brand=row.brand,
                 model=row.model,
                 branch_id=row.branch_id,
+                branch_name=row.branch_name,
                 on_hand=row.on_hand,
                 reorder_point=branch_sku.reorder_point if branch_sku else None,
             )
