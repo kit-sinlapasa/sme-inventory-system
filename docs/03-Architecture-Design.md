@@ -194,16 +194,20 @@ flowchart LR
 
 ## 7. STRIDE Threat Model
 
-| # | Threat | สถานการณ์เจาะจงของระบบนี้ | Mitigation |
-|---|---|---|---|
-| **S** | Spoofing | พนักงานสาขาปลอมแปลง role เป็น Admin โดยแก้ payload ฝั่ง client | JWT เซ็นด้วย server secret, role ฝังใน token ที่ client แก้ไม่ได้โดยไม่ทำให้ signature เสีย |
-| **T** | Tampering | สาขายิง `PUT /products` หรือ `POST /items` ตรงเพื่อแก้สต็อกหลักโดยไม่ผ่าน UI | NFR-SEC-02 — role check middleware บังคับที่ **ทุก** endpoint ฝั่ง server (403 ถ้าไม่ใช่ Admin) |
-| **T** | Tampering | แก้ `branch_id` ใน request body ตอนสร้าง Sale เพื่อให้ยอดขายไปโผล่สาขาอื่น | Server ดึง `branch_id` จาก JWT เสมอ ไม่เชื่อค่าที่ client ส่งมาใน body |
-| **R** | Repudiation | Admin ปฏิเสธว่าไม่ได้เป็นคนอนุมัติ PR ฉบับหนึ่ง | AuditLog (FR-011) บันทึก actor + timestamp ทุก action เปลี่ยนสถานะ — ใช้เป็นหลักฐาน |
-| **I** | Information Disclosure | หน้าเช็คประกันสาธารณะรั่วชื่อ/เบอร์โทรผู้ซื้อ | NFR-SEC-01 — response schema ของ `/api/public/warranty` ไม่มี field buyer เลย ทดสอบด้วย schema-level test |
-| **I** | Information Disclosure | Error message เปิดเผย stack trace หรือ query จริงเมื่อเกิด exception | Fail Securely (Deck 03 สไลด์ 26) — custom error handler คืนข้อความทั่วไปให้ client, log รายละเอียดจริงไว้ฝั่ง server เท่านั้น |
-| **D** | Denial of Service | มีคนยิง S/N สุ่มจำนวนมากไปที่ endpoint สาธารณะ (scraping/enumeration) | Rate limiting ต่อ IP บน `/api/public/warranty/*` |
-| **E** | Elevation of Privilege | Token ของพนักงานสาขาที่หมดอายุ/ถูกขโมยถูกใช้เข้าถึง endpoint ของ Admin | JWT TTL สั้น + ตรวจ role ทุก request (ไม่ใช่แค่ตอน login) |
+> ⚠️ **อัปเดตสัปดาห์ 7 (Hardening):** ทุกแถวด้านล่างมีคอลัมน์ "Verified" เพิ่มเข้ามา — ยืนยันจริงด้วย
+> automated test (`tests/integration/test_stride_mitigations.py`) ไม่ใช่แค่คำอธิบายในเอกสารอีกต่อไป
+> รายละเอียดว่าตรวจจริงอย่างไรอยู่ใน `docs/02-AI-Usage-Log.md` entry ที่เกี่ยวข้อง
+
+| # | Threat | สถานการณ์เจาะจงของระบบนี้ | Mitigation | Verified |
+|---|---|---|---|---|
+| **S** | Spoofing | พนักงานสาขาปลอมแปลง role เป็น Admin โดยแก้ payload ฝั่ง client | JWT เซ็นด้วย server secret, role ฝังใน token ที่ client แก้ไม่ได้โดยไม่ทำให้ signature เสีย (`jwt.decode` ระบุ `algorithms=[...]` ตายตัวด้วย ป้องกัน algorithm-confusion attack) | ✅ `test_tampered_jwt_signature_rejected`, `test_jwt_signed_with_wrong_secret_rejected` |
+| **T** | Tampering | สาขายิง `PUT /products` หรือ `POST /items` ตรงเพื่อแก้สต็อกหลักโดยไม่ผ่าน UI | NFR-SEC-02 — role check middleware บังคับที่ **ทุก** endpoint ฝั่ง server (403 ถ้าไม่ใช่ Admin) | ✅ ครอบคลุมแล้วโดย test 403 หลายไฟล์ (`test_products.py`, `test_branch_sku.py` ฯลฯ) ตั้งแต่สัปดาห์ 2-3 |
+| **T** | Tampering | แก้ `branch_id` ใน request body ตอนสร้าง Sale เพื่อให้ยอดขายไปโผล่สาขาอื่น | Server ดึง `branch_id` จาก JWT เสมอ ไม่เชื่อค่าที่ client ส่งมาใน body (schema `SaleCreate` ไม่มี field `branch_id` เลยด้วยซ้ำ) | ✅ `test_spoofed_branch_id_in_sale_payload_is_ignored` — ยัด `branch_id` ปลอมเข้า body จริง ยืนยันว่าไม่มีผล |
+| **R** | Repudiation | Admin ปฏิเสธว่าไม่ได้เป็นคนอนุมัติ PR ฉบับหนึ่ง | AuditLog (FR-011) บันทึก actor + timestamp ทุก action เปลี่ยนสถานะ — ใช้เป็นหลักฐาน | ✅ `test_audit_log.py::test_actions_are_actually_logged` |
+| **I** | Information Disclosure | หน้าเช็คประกันสาธารณะรั่วชื่อ/เบอร์โทรผู้ซื้อ | NFR-SEC-01 — response schema ของ `/api/public/warranty` ไม่มี field buyer เลย ทดสอบด้วย schema-level test | ✅ `test_public_warranty.py::test_warranty_check_valid_serial_returns_status_without_buyer_info` |
+| **I** | Information Disclosure | Error message เปิดเผย stack trace หรือ query จริงเมื่อเกิด exception | **แก้ไขคำอธิบายจากเดิม:** ไม่มี custom error handler แยกต่างหาก — ใช้พฤติกรรม default ของ FastAPI/Starlette (`debug=False` ซึ่งเป็นค่า default อยู่แล้ว ไม่เคยตั้ง `debug=True` ที่ไหนเลย) ซึ่งคืน "Internal Server Error" ทั่วไปให้ client และ log รายละเอียดจริงไว้ฝั่ง server เท่านั้นอยู่แล้วโดยไม่ต้องเขียนโค้ดเพิ่ม | ✅ `test_unhandled_exception_does_not_leak_internal_details` — บังคับให้เกิด exception จริงผ่าน dependency override แล้วตรวจ response ไม่มี stack trace/path ไฟล์รั่วออกมา |
+| **D** | Denial of Service | มีคนยิง S/N สุ่มจำนวนมากไปที่ endpoint สาธารณะ (scraping/enumeration) | Rate limiting ต่อ IP บน `/api/public/warranty/*` (`slowapi`, 30 request/นาที) | ✅ `test_public_warranty_rate_limit_returns_429_after_30_requests` — ยิงจริง 31 ครั้ง ยืนยันโดน 429 |
+| **E** | Elevation of Privilege | Token ของพนักงานสาขาที่หมดอายุ/ถูกขโมยถูกใช้เข้าถึง endpoint ของ Admin | JWT TTL สั้น (60 นาที ตั้งค่าได้) + ตรวจ role ทุก request จาก DB จริง ไม่ใช่แค่เชื่อค่าใน token (ไม่ใช่แค่ตอน login) | ✅ ครอบคลุมโดย test 403 role-check เดียวกับแถว T ด้านบน — `get_current_user` ใน `deps.py` ดึง User จาก DB ทุกครั้ง |
 
 ---
 
@@ -242,6 +246,101 @@ repo/
 └── docs/                  (เอกสารทั้งหมดจากบทสนทนานี้ + Appendix รูปโน้ตลายมือ)
 ```
 
-## 9. Next: อัปเดต RTM
+## 9. Security & Performance Hardening (สัปดาห์ 7)
+
+### 9.1 Dependency Vulnerability Scan (`pip-audit`)
+
+รันจริงกับ `requirements.txt` — ผลก่อนแก้: **23 known vulnerabilities ใน 5 package**
+(`python-jose`, `python-multipart`, `pytest`, `starlette`, `ecdsa`) ผลหลังแก้:
+
+| Package | เดิม | ใหม่ | เหตุผล |
+|---|---|---|---|
+| `fastapi` | 0.115.0 | 0.135.0 | ต้อง jump ใหญ่เพราะ starlette CVE ใหม่สุดต้องการ fastapi ที่ไม่ล็อก `starlette<0.47` |
+| `starlette` | (transitive 0.38.6) | 1.6.0 (pin ตรง) | แก้ CVE ที่พบทั้งหมดจาก pip-audit |
+| `python-jose` | 3.3.0 | 3.5.0 | แก้ PYSEC-2024-232/233, PYSEC-2025-185 (ตรงกับ STRIDE-S) |
+| `python-multipart` | 0.0.9 | 0.0.32 | แก้ CVE 6 รายการ |
+| `pytest` | 8.3.3 | 9.0.3 | dev-only dependency ไม่มี attack surface บน production แต่แก้เพราะทำได้ฟรี |
+
+ผลหลังแก้: **เหลือ 1 vulnerability** — `ecdsa` 0.19.2 (PYSEC-2026-1325) **ยอมรับความเสี่ยงนี้ไว้**
+เพราะ: (1) ยังไม่มี patched version ให้อัปเกรด (2) `ecdsa` ถูกดึงมาเป็น dependency บังคับของ
+`python-jose` แต่แอปนี้ตั้งค่า `JWT_ALGORITHM=HS256` เท่านั้น (`jwt.decode(..., algorithms=[...]`
+ล็อกไว้ตายตัวใน `deps.py`) — `ecdsa` ใช้เฉพาะ algorithm ตระกูล ES256/384/512 ซึ่ง**ไม่ถูกเรียกใช้เลย
+ใน code path จริงของระบบนี้** ความเสี่ยงจึงเป็น unreachable code ไม่ใช่ exploitable
+
+**Verify ครบวงจรหลังอัปเกรด** (ไม่ใช่แค่ bump เวอร์ชันแล้วเดาว่าไม่พัง): 47 test เดิม + 10 test ใหม่
+(STRIDE + purge) ผ่านหมด 57/57, `ruff check` clean, smoke test ผ่าน uvicorn จริง + curl จริง,
+และ full browser click-through หลังอัปเกรด `react-router-dom` v6→v7 ฝั่ง frontend ด้วย (ดูหัวข้อ 9.3)
+
+⚠️ **บทเรียนที่บันทึกไว้ตรง ๆ**: ระหว่างอัปเกรดรอบแรก AI ติดตั้ง dependency ของโปรเจกต์นี้ทับ
+ลงใน shared Python environment ของเครื่องมือ (Claude Code) โดยไม่ได้ตั้งใจ ทำให้ downgrade
+package ที่ระบบอื่นต้องใช้ — พบและแก้ไขทันทีด้วยการ restore เวอร์ชันเดิม แล้วสร้าง `backend/venv/`
+แยกต่างหาก (อยู่ใน `.gitignore` แล้ว) ไม่ให้เกิดซ้ำ ดู `docs/02-AI-Usage-Log.md` สำหรับรายละเอียดเต็ม
+
+### 9.2 License Check
+
+Backend dependency ทั้งหมดเป็น license แบบ permissive (MIT/BSD/Apache-2.0) ยกเว้น
+`psycopg2-binary` ซึ่งเป็น **LGPL** — ใช้ได้ปกติในฐานะ dependency ที่เรียกใช้ผ่าน import
+(ไม่ได้แก้โค้ด psycopg2 เอง) LGPL ไม่บังคับให้ codebase ที่เหลือต้อง open-source ตาม ไม่มี
+GPL/AGPL หรือ license เชิงพาณิชย์ปนอยู่เลย — สอดคล้องกับการตัดสินใจใน ADR-003 ว่าเลือก stack
+ที่ "ฟรีทั้งหมด"
+
+Frontend (`npm audit --omit=dev`): พบ CVE moderate 2 จุดใน `react-router-dom` 6.26.2
+(open redirect + arbitrary constructor injection ใน SSR hydration) **ไม่มี patch ใน 6.x
+line เลยแม้แต่เวอร์ชันล่าสุด (6.30.6)** ต้องอัปเกรดข้าม major version เป็น v7.18.2 — ตรวจโค้ด
+ก่อนอัปเกรดว่าแอปนี้ใช้แค่ Declarative Mode API พื้นฐาน (`BrowserRouter`, `Routes`, `Route`,
+`Navigate`, `NavLink`, `Outlet`, `useNavigate`) ซึ่งเข้ากันได้กับ v7 เต็มรูปแบบ อัปเกรดแล้ว
+`npm audit --omit=dev` **เหลือ 0 vulnerability**, build ผ่าน, และ verify ด้วยการ login +
+คลิกไปมาระหว่างหน้าจริงผ่าน browser ครบ (route guard redirect หลัง logout ยังทำงานถูกต้อง)
+
+Dev-only vulnerability ที่เหลือ (esbuild ผ่าน `vite`/`vitest`) **ยอมรับความเสี่ยงไว้** เพราะ
+กระทบเฉพาะตอนรัน `npm run dev` local เท่านั้น (dev server ยอมรับ request จากเว็บไซต์ใดก็ได้)
+ไม่มี attack surface บน production เลยเพราะ deploy เป็น static build ไม่ใช่ dev server —
+แก้ต้องอัปเกรด `vite` ข้าม major version (5→8) ซึ่งเสี่ยง breaking change สูงกว่าประโยชน์ที่ได้
+
+### 9.3 STRIDE Mitigation Verification
+
+ดูตารางในหัวข้อ 7 ด้านบน (คอลัมน์ Verified ใหม่) — เขียน
+`tests/integration/test_stride_mitigations.py` (5 tests) ยืนยันทุก mitigation ที่เขียนไว้
+ในตารางทำงานจริง ไม่ใช่แค่คำอธิบาย พบและแก้บั๊กจริงระหว่างเขียนเทสต์: rate-limit test ตัวแรก
+fail เพราะ `slowapi` เก็บ state แบบ global ต่อ process (key ตาม IP) ทำให้โควตาที่ test ไฟล์อื่น
+ใช้ไปก่อนหน้าติดมาด้วย — แก้ด้วย `limiter.reset()` ก่อนเทสต์นี้เสมอ
+
+### 9.4 NFR-PRIV-01 — Manual Purge Function
+
+`POST /api/admin/purge-old-buyer-data` (Admin เท่านั้น) — anonymize `buyer_name`/`buyer_phone`
+ของ `Sale` ที่หมดประกันมาเกิน `DATA_RETENTION_YEARS` ปี (default 3) เก็บ record ไว้เหมือนเดิม
+เพื่อให้ตรวจประกันย้อนหลังได้ (FR-006) แค่ anonymize เฉพาะข้อมูลระบุตัวตนผู้ซื้อ เป็นฟังก์ชัน
+**manual** ที่ Admin กดเรียกเอง (ตัดสินใจตาม CR-005 — ไม่ใช่ background job อัตโนมัติ เพื่อลด
+ขอบเขตให้เหมาะกับเวลา) verify ด้วย `tests/integration/test_purge_buyer_data.py` (5 tests:
+purge รายการที่เกินกำหนดจริง, ไม่แตะรายการที่ยังไม่เกิน, ไม่ประมวลผลซ้ำรายการที่ purge ไปแล้ว,
+403 ถ้าไม่ใช่ Admin, บันทึกลง audit log จริง)
+
+### 9.5 NFR-PERF-01 — Load Test
+
+`backend/scripts/load_test.py` — ยิง 200 concurrent request ไปที่ `/api/public/warranty/{serial}`
+จริงผ่าน uvicorn single-worker (ตรงกับ `render.yaml` ที่ไม่ได้ตั้ง `--workers` เหมือนกัน) วัดด้วย
+`httpx.AsyncClient` จริงผ่าน TCP loopback ไม่ใช่ ASGI in-process transport
+
+**ผลจริง (รันซ้ำ 2 รอบเพื่อดูความเสถียร):**
+
+| รอบ | Status codes | P50 | P95 (เป้าหมาย ≤ 2000ms) | P99 |
+|---|---|---|---|---|
+| 1 | ทั้งหมด 200 | 1277 ms | **1533 ms — PASS** | 1536 ms |
+| 2 | ทั้งหมด 200 | 1241 ms | **1472 ms — PASS** | 1475 ms |
+
+หมายเหตุ: ปิด rate limiter (STRIDE-D) ชั่วคราวเฉพาะรอบทดสอบนี้ในกระบวนการทดสอบเท่านั้น
+(ไม่แตะโค้ด production) เพราะ 200 request จากเครื่องเดียวกันมาจาก IP loopback เดียวกันหมด
+จะโดน 429 ตั้งแต่ request ที่ 31 ถ้าไม่ปิด ซึ่งจะวัด throughput จริงไม่ได้ — STRIDE-D มี test
+แยกต่างหากอยู่แล้วที่ยืนยันว่า rate limit ทำงานจริง (ดูหัวข้อ 9.3) ทดสอบบนเครื่อง local Windows
+ธรรมดา ไม่ใช่ production infrastructure ของ Render — ตัวเลขจริงบน Render อาจต่างกัน (ทั้งดีกว่า
+และแย่กว่าได้ ขึ้นกับ CPU/network ของ free tier) แต่เป็นหลักฐานว่า design รองรับโหลดตามสเปกได้จริง
+
+### 9.6 NFR-USE-01 — Usability Test
+
+⚠️ **AI ทำส่วนนี้ไม่ได้จริง ๆ** — ต้องการผู้ใช้จริง (ไม่ใช่ทีมพัฒนาเอง) มาทดลองใช้งานจริงแล้ววัด
+task success rate/เวลาที่ใช้ ตามที่ระบุไว้ในสเปกเดิม ทีมต้องดำเนินการเองก่อนส่งงาน — เอกสารนี้
+บันทึกไว้ตรง ๆ ว่านี่คือช่องว่างที่เหลืออยู่ ไม่ใช่การอ้างว่าทำครบแล้ว
+
+### 9.7 Next: อัปเดต RTM
 
 คอลัมน์ Design ใน [01-Requirements-Package.md](01-Requirements-Package.md) จะถูกเติมให้ชี้กลับมาที่เอกสารนี้ (ER entity / API endpoint ที่เกี่ยวข้องของแต่ละ FR/NFR) — ทำในขั้นถัดไป

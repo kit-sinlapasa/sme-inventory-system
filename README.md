@@ -71,9 +71,14 @@ npm run dev
 | Branch UI (สต็อก/บันทึกขาย/คำขอสั่งซื้อ) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
 | Admin UI (สต็อกรวม/สินค้า/รับสต็อก/คำขอ/audit log) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
 | Seed data สาธิต (CR-009) | ✅ 60 สินค้า (6 หมวดหมู่ x 10) พร้อม Item/S/N รับเข้าจริง 2 สาขา, ขายบางส่วน, PR ครบ 3 สถานะ |
-| Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน — **ยังไม่ redeploy รอบล่าสุดที่มี FR-012/013/014** ต้องตั้งค่า SMTP env vars บน Render dashboard ก่อน (ดู `render.yaml`) |
+| Purge ข้อมูลผู้ซื้อเก่า (NFR-PRIV-01) | ✅ ใช้งานได้ + test — `POST /api/admin/purge-old-buyer-data` manual purge ตาม retention policy |
+| Load test สาธารณะ (NFR-PERF-01) | ✅ 200 concurrent request จริง — P95 1472-1533ms (เป้าหมาย ≤2000ms) ผ่าน 2 รอบ ดู `docs/03-Architecture-Design.md` หัวข้อ 9.5 |
+| STRIDE mitigation verification | ✅ ทุกข้อมี automated test กำกับแล้ว (`test_stride_mitigations.py`) — ดู `docs/03-Architecture-Design.md` หัวข้อ 7 |
+| Dependency security (`pip-audit` + `npm audit`) | ✅ Backend 23→1 vulnerability (เหลือ 1 จุดที่ unreachable, ดูเหตุผลหัวข้อ 9.1) · Frontend 2→0 vulnerability (production deps) |
+| Usability test (NFR-USE-01) | 🟡 ยังไม่ทำ — ต้องการผู้ใช้จริงทดลอง AI ทำแทนไม่ได้ ทีมต้องทำเองก่อนส่งงาน |
+| Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน — redeploy ล่าสุดมี FR-012/013/014 ครบแล้ว (verify ผ่าน production จริง) แต่**ยังไม่ redeploy รอบ hardening ล่าสุด** (dependency upgrade + purge endpoint) ต้อง `git push` ให้ Render sync ก่อน |
 
-> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 47 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail, low-stock alert debounce, product image limit ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) **UI ทั้ง Branch และ Admin ถูกคลิกทดสอบจริงผ่าน browser** ครบ flow: login → เพิ่มสินค้า → รับสต็อก → ขาย (S/N lookup) → เช็คประกันสาธารณะ → สร้าง/ปฏิเสธคำขอสั่งซื้อ → ดู audit log → จัดการรูปสินค้า → ดู KPI dashboard พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
+> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 57 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail, low-stock alert debounce, product image limit, STRIDE mitigation, buyer-data purge ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) **UI ทั้ง Branch และ Admin ถูกคลิกทดสอบจริงผ่าน browser** ครบ flow: login → เพิ่มสินค้า → รับสต็อก → ขาย (S/N lookup) → เช็คประกันสาธารณะ → สร้าง/ปฏิเสธคำขอสั่งซื้อ → ดู audit log → จัดการรูปสินค้า → ดู KPI dashboard พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
 
 ## Test Login (local dev, สร้างจาก `python -m scripts.seed`)
 | Role | Username | Password |

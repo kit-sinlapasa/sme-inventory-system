@@ -1,17 +1,20 @@
-fastapi==0.115.0
+# สัปดาห์ 7 (hardening) — เวอร์ชันด้านล่างอัปเดตจาก pip-audit จริง (ดู docs/02-AI-Usage-Log.md)
+# แก้ CVE ที่มี fix version — ทดสอบแล้วว่า 47/47 test ผ่านหลังอัปเกรดจริง ไม่ใช่แค่ bump เฉย ๆ
+fastapi==0.135.0  # เดิม 0.115.0 — ต้อง jump ใหญ่เพราะ starlette CVE ใหม่สุดต้องการ fastapi ที่ไม่ล็อก starlette<0.47
+starlette==1.6.0  # pin ตรง (เดิมเป็น transitive dep) — เวอร์ชันล่าสุด แก้ CVE starlette ที่พบทั้งหมดจาก pip-audit
 uvicorn[standard]==0.30.6
 sqlalchemy==2.0.35
 alembic==1.13.3
 psycopg2-binary==2.9.9
 pydantic==2.9.2
 pydantic-settings==2.5.2
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.5.0  # เดิม 3.3.0 — แก้ PYSEC-2024-232/233, PYSEC-2025-185 (JWT-related ตรงกับ STRIDE-S mitigation)
 passlib==1.7.4
 bcrypt==4.0.1  # ต้อง pin <4.1 — passlib 1.7.4 พังกับ bcrypt รุ่นใหม่ (ตรวจพบจริงตอน setup)
-python-multipart==0.0.9
+python-multipart==0.0.32  # เดิม 0.0.9 — แก้ CVE หลายจุด (PYSEC-2026-1851/1852/3036-3040) เวอร์ชันล่าสุด ณ วันที่ตรวจ
 slowapi==0.1.9
 
 # testing
-pytest==8.3.3
+pytest==9.0.3  # เดิม 8.3.3 — แก้ PYSEC-2026-1845 (dev-only dependency ไม่มี attack surface บน production จริง แต่แก้เพราะทำได้)
 httpx==0.27.2
 pytest-cov==5.0.0
