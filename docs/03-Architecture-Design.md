@@ -190,6 +190,95 @@ flowchart LR
 3. **จัดการ PR:** เห็นรายการ PR รอดำเนินการ → ตรวจสอบ → อนุมัติ (สร้าง PO อัตโนมัติ) หรือปฏิเสธ (ต้องระบุเหตุผล) (US-07)
 4. **ตรวจ Dashboard:** เห็นการแจ้งเตือนสินค้าใกล้หมดต่อสาขา (US-08) + audit log ค้นหาย้อนหลัง (FR-011)
 
+### 6.1 Use Case / Sequence / Activity Diagrams (สัปดาห์ 8 — เติมสำหรับรายงานส่วน ③ Requirements Modeling)
+
+> Mermaid ไม่มี UML Use Case notation แบบทางการ (stick figure + ellipse) ในตัว — ใช้ flowchart แทน
+> โดย actor = กล่องมน, use case = วงรี ตามธรรมเนียมที่ใช้กันทั่วไปเมื่อไม่มี tool UML เฉพาะทาง
+
+**Use Case Diagram — 3 Actor ครอบคลุมทุก FR หลัก**
+
+```mermaid
+flowchart LR
+    actor1(["บุคคลทั่วไป"])
+    actor2(["พนักงานสาขา<br/>Branch Staff"])
+    actor3(["ผู้ดูแลระบบ<br/>Admin"])
+
+    subgraph SYS["ระบบ SME Inventory & Order Management"]
+        UC1((ตรวจสอบสถานะ<br/>การรับประกัน))
+        UC2((เข้าสู่ระบบ))
+        UC3((บันทึกการขาย))
+        UC4((ดูสต็อกของสาขา))
+        UC5((สร้างคำขอสั่งซื้อ))
+        UC6((จัดการสินค้า / SKU))
+        UC7((รับสินค้าเข้าสต็อก))
+        UC8((อนุมัติ/ปฏิเสธ<br/>คำขอสั่งซื้อ))
+        UC9((ดู Audit Log))
+        UC10((จัดการรูปสินค้า))
+        UC11((ลบข้อมูลผู้ซื้อ<br/>ที่เกินระยะเก็บ))
+        UC12((ดู KPI Dashboard))
+    end
+
+    actor1 --> UC1
+    actor2 --> UC2
+    actor2 --> UC3
+    actor2 --> UC4
+    actor2 --> UC5
+    actor2 --> UC12
+    actor3 --> UC2
+    actor3 --> UC4
+    actor3 --> UC6
+    actor3 --> UC7
+    actor3 --> UC8
+    actor3 --> UC9
+    actor3 --> UC10
+    actor3 --> UC11
+    actor3 --> UC12
+```
+
+**Sequence Diagram — บันทึกการขายพร้อมกัน (ADR-002, NFR-REL-01)** — เลือก flow นี้เพราะเป็น
+ความท้าทายหลักของโปรเจกต์และเป็นจุดที่ผู้ตรวจสอบมักถามในการ demo
+
+```mermaid
+sequenceDiagram
+    participant S1 as พนักงาน A (เธรด 1)
+    participant S2 as พนักงาน B (เธรด 2)
+    participant API as FastAPI POST /api/sales
+    participant DB as PostgreSQL (items, sales)
+
+    Note over S1,S2: ทั้งคู่พยายามขาย Item S/N เดียวกันพร้อมกัน
+    par คำขอพร้อมกัน
+        S1->>API: POST /api/sales + Idempotency-Key A
+        S2->>API: POST /api/sales + Idempotency-Key B
+    end
+    API->>DB: UPDATE items SET status='Sold'<br/>WHERE id=? AND status='InStock' (เธรด 1)
+    API->>DB: UPDATE items SET status='Sold'<br/>WHERE id=? AND status='InStock' (เธรด 2)
+    DB-->>API: rowcount=1 (เธรด 1 ชนะ)
+    DB-->>API: rowcount=0 (เธรด 2 แพ้ race)
+    API->>DB: INSERT INTO sales (...) (เธรด 1 เท่านั้น)
+    API-->>S1: 201 Created — บันทึกการขายสำเร็จ
+    API-->>S2: 409 Conflict — "สินค้านี้ถูกขายไปแล้ว"
+```
+
+**Activity Diagram — PR → PO Approval Flow (US-07)**
+
+```mermaid
+flowchart TD
+    Start([เริ่มต้น]) --> A[พนักงานสาขาสร้าง<br/>คำขอสั่งซื้อ PR]
+    A --> B[สถานะ: Pending]
+    B --> C{Admin ตรวจสอบ}
+    C -->|อนุมัติ| D["Conditional UPDATE:<br/>status Pending to Approved"]
+    D --> E{อัปเดตสำเร็จ?}
+    E -->|ใช่ rowcount=1| F[สร้าง Purchase Order<br/>อัตโนมัติ]
+    E -->|ไม่ rowcount=0<br/>มีคนตัดสินใจไปแล้ว| G[คืน 409 Conflict]
+    F --> H([จบ: PR มี PO แล้ว])
+    C -->|ปฏิเสธ| I{กรอกเหตุผลหรือยัง?}
+    I -->|ยัง| J["บังคับกรอกเหตุผล<br/>(ปุ่มยืนยัน disabled)"]
+    J --> I
+    I -->|กรอกแล้ว| K["Conditional UPDATE:<br/>status Pending to Rejected"]
+    K --> L([จบ: PR ถูกปฏิเสธ<br/>พร้อมเหตุผล])
+    G --> M([จบ: ไม่มีการเปลี่ยนแปลง])
+```
+
 ---
 
 ## 7. STRIDE Threat Model
