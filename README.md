@@ -7,6 +7,16 @@ Repo: https://github.com/kit-sinlapasa/sme-inventory-system
 ระบบจัดการสต็อกและตรวจสอบการรับประกันอะไหล่คอมพิวเตอร์แบบรายชิ้น (serialized inventory)
 โครงงานปลายภาค NC221 วิศวกรรมซอฟต์แวร์ — ม.หอการค้าไทย
 
+## 🚀 Live Deployment
+
+| ส่วน | URL | สถานะ |
+|---|---|---|
+| Frontend | https://sme-inventory-frontend.onrender.com | ✅ Live |
+| Backend API | https://sme-inventory-api.onrender.com | ✅ Live |
+| API Docs (auto-generated) | https://sme-inventory-api.onrender.com/docs | ✅ Live |
+
+> ⚠️ Free tier ของ Render spin down หลังไม่มีคนใช้ 15 นาที — request แรกหลังจากนั้นอาจช้า ~30-60 วินาที (ปกติ ไม่ใช่บั๊ก)
+
 📄 เอกสารประกอบทั้งหมด (Requirement Package, Architecture & Design, AI Usage Log) อยู่ที่ `../project/`
 **ก่อน commit ครั้งแรก ให้ย้าย 3 ไฟล์นั้นมาไว้ใน `docs/` ของ repo นี้** เพื่อให้เป็นส่วนหนึ่งของ git history จริง (เป็นหลักฐาน RTM/traceability ที่ Deck 05 ต้องการ)
 
@@ -55,7 +65,7 @@ npm run dev
 | Reorder point ต่อสาขา (FR-012) | 🟡 ตั้งค่า+แสดงผลทำแล้ว ยังไม่มีกลไกแจ้งเตือน |
 | Audit log (FR-011) | 🟡 บันทึกอัตโนมัติทุก mutation แล้ว ยังไม่มี endpoint ให้ค้นดู |
 | PR→PO flow (FR-009/010), alerts, หน้า Branch/Admin UI | 🔲 TODO สัปดาห์ 3+ — ดู endpoint list เต็มใน `docs/03-Architecture-Design.md` ส่วนที่ 5 |
-| Deploy จริง (Render) | 🔲 เขียน `render.yaml` ไว้แล้ว รอทีมสมัครบัญชี Render |
+| Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน |
 
 > ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 20 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
 
