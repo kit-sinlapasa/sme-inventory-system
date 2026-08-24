@@ -4,9 +4,13 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import require_admin, require_any_role
 from app.models.product import Product
+from app.models.product_image import ProductImage
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductOut, ProductUpdate
+from app.schemas.product_image import ProductImageCreate, ProductImageOut
 from app.services.audit import write_audit_log
+
+MAX_PRODUCT_IMAGES = 5  # FR-013 (CR-007)
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
@@ -120,4 +124,68 @@ def suspend_product(
         entity_id=product.id,
         before={"is_active": True},
         after={"is_active": False},
+    )
+
+
+@router.post(
+    "/{product_id}/images", response_model=ProductImageOut, status_code=status.HTTP_201_CREATED
+)
+def add_product_image(
+    product_id: int,
+    payload: ProductImageCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),  # FR-013 (CR-007) — Admin เท่านั้น
+):
+    """สูงสุด 5 รูปต่อ SKU — บังคับที่นี่ ไม่ใช่ DB constraint (เก็บเป็น URL ตาม CR-007)"""
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="ไม่พบสินค้า")
+
+    count = db.query(ProductImage).filter(ProductImage.product_id == product_id).count()
+    if count >= MAX_PRODUCT_IMAGES:
+        raise HTTPException(status_code=409, detail=f"สินค้านี้มีรูปครบ {MAX_PRODUCT_IMAGES} รูปแล้ว")
+
+    image = ProductImage(product_id=product_id, image_url=str(payload.image_url), sort_order=count)
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+
+    write_audit_log(
+        db,
+        actor=current_user,
+        action="ADD_PRODUCT_IMAGE",
+        entity_type="Product",
+        entity_id=product_id,
+        before=None,
+        after={"image_id": image.id, "image_url": image.image_url},
+    )
+    return image
+
+
+@router.delete("/{product_id}/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product_image(
+    product_id: int,
+    image_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    image = (
+        db.query(ProductImage)
+        .filter(ProductImage.id == image_id, ProductImage.product_id == product_id)
+        .first()
+    )
+    if image is None:
+        raise HTTPException(status_code=404, detail="ไม่พบรูปภาพนี้")
+
+    db.delete(image)
+    db.commit()
+
+    write_audit_log(
+        db,
+        actor=current_user,
+        action="DELETE_PRODUCT_IMAGE",
+        entity_type="Product",
+        entity_id=product_id,
+        before={"image_id": image_id},
+        after=None,
     )

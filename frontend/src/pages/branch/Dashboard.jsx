@@ -2,16 +2,22 @@ import { useEffect, useState } from 'react'
 import client from '../../api/client'
 
 // FR-003, FR-008 — ดูสต็อกเรียลไทม์ของสาขาตัวเอง (server บังคับ scope ให้แล้ว)
+// FR-014 (CR-008) — KPI card สรุปภาพรวมของสาขาตัวเอง เสริมของหน้าเดิม
 export default function BranchDashboard() {
   const [stock, setStock] = useState([])
+  const [pendingPRs, setPendingPRs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   async function load() {
     setLoading(true)
     try {
-      const { data } = await client.get('/stock')
-      setStock(data)
+      const [stockRes, prRes] = await Promise.all([
+        client.get('/stock'),
+        client.get('/purchase-requests?status=Pending'),
+      ])
+      setStock(stockRes.data)
+      setPendingPRs(prRes.data)
     } catch (err) {
       setError('โหลดข้อมูลสต็อกไม่สำเร็จ')
     } finally {
@@ -23,6 +29,9 @@ export default function BranchDashboard() {
     load()
   }, [])
 
+  const lowStockCount = stock.filter((r) => r.reorder_point != null && r.on_hand <= r.reorder_point).length
+  const totalOnHand = stock.reduce((sum, r) => sum + r.on_hand, 0)
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -30,6 +39,25 @@ export default function BranchDashboard() {
         <button onClick={load} className="text-sm text-brand-600 hover:underline">
           รีเฟรช
         </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="bg-white rounded-lg shadow p-4">
+          <p className="text-xs text-gray-500 mb-1">ชิ้นคงเหลือทั้งหมด</p>
+          <p className="text-2xl font-semibold text-brand-900">{totalOnHand}</p>
+        </div>
+        <div className={`rounded-lg shadow p-4 ${lowStockCount > 0 ? 'bg-red-50' : 'bg-white'}`}>
+          <p className="text-xs text-gray-500 mb-1">รายการใกล้หมด</p>
+          <p className={`text-2xl font-semibold ${lowStockCount > 0 ? 'text-red-700' : 'text-brand-900'}`}>
+            {lowStockCount}
+          </p>
+        </div>
+        <div className={`rounded-lg shadow p-4 ${pendingPRs.length > 0 ? 'bg-amber-50' : 'bg-white'}`}>
+          <p className="text-xs text-gray-500 mb-1">คำขอสั่งซื้อรออนุมัติ</p>
+          <p className={`text-2xl font-semibold ${pendingPRs.length > 0 ? 'text-amber-700' : 'text-brand-900'}`}>
+            {pendingPRs.length}
+          </p>
+        </div>
       </div>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}

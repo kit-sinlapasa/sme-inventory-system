@@ -7,6 +7,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.item import Item
+    from app.models.product_image import ProductImage
 
 
 class Product(Base):
@@ -25,3 +26,6 @@ class Product(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     items: Mapped[list["Item"]] = relationship(back_populates="product")
+    images: Mapped[list["ProductImage"]] = relationship(
+        back_populates="product", cascade="all, delete-orphan", order_by="ProductImage.sort_order"
+    )

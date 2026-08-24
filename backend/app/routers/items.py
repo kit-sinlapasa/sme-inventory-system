@@ -9,6 +9,7 @@ from app.models.product import Product
 from app.models.user import User
 from app.schemas.item import ItemOut, ItemReceive
 from app.services.audit import write_audit_log
+from app.services.stock_alerts import evaluate_low_stock_alert
 
 router = APIRouter(prefix="/api/items", tags=["items"])
 
@@ -64,4 +65,9 @@ def receive_item(
         before=None,
         after={"serial_number": item.serial_number, "branch_id": item.branch_id, "status": "InStock"},
     )
+
+    # CR-006 — รับเข้า = สต็อกเพิ่ม จุดที่ต้อง reset debounce flag ถ้าเพิ่งเติมกลับมาเกิน threshold
+    # may_alert=False — ห้ามให้ event รับเข้าเป็นตัวยิงแจ้งเตือนใหม่ (ดูเหตุผลใน stock_alerts.py)
+    evaluate_low_stock_alert(db, branch_id=item.branch_id, sku_id=item.sku_id, may_alert=False)
+
     return item

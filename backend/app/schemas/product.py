@@ -1,5 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.product_image import ProductImageOut
+
 
 class ProductCreate(BaseModel):
     category: str = Field(..., examples=["RAM", "Mainboard", "CPU"])
@@ -27,3 +29,4 @@ class ProductOut(BaseModel):
     spec: str | None
     warranty_months: int
     is_active: bool
+    images: list[ProductImageOut] = []  # FR-013 (CR-007)

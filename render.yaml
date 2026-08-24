@@ -38,6 +38,20 @@ services:
         value: "60"
       - key: DATA_RETENTION_YEARS
         value: "3"
+      # FR-012 / CR-006 — sync:false = Render จะไม่เติมค่าอะไรให้ ทีมต้องกรอกเองผ่าน
+      # dashboard (Environment tab) หลัง deploy — AI ไม่เคยเห็น/ตั้งค่าตัวจริงเหล่านี้เลย
+      - key: ALERT_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
 
   - type: web
     name: sme-inventory-frontend

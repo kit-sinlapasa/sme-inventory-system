@@ -11,6 +11,7 @@ from app.models.sale import Sale
 from app.models.user import User
 from app.schemas.sale import SaleCreate, SaleOut
 from app.services.audit import write_audit_log
+from app.services.stock_alerts import evaluate_low_stock_alert
 
 router = APIRouter(prefix="/api/sales", tags=["sales"])
 
@@ -84,5 +85,8 @@ def create_sale(
         before={"item_id": item.id, "item_status": "InStock"},
         after={"item_id": item.id, "item_status": "Sold", "sale_id": sale.id},
     )
+
+    # CR-006 — ขาย = สต็อกลด จุดที่ต้องเช็คว่าต่ำกว่า reorder point แล้วหรือยัง
+    evaluate_low_stock_alert(db, branch_id=branch_id, sku_id=item.sku_id)
 
     return sale

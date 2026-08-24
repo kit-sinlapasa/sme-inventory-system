@@ -77,7 +77,9 @@
 | **FR-009** | สาขาต้องสร้างคำขอสั่งซื้อ (PR) ได้ และระบบต้องแจ้งเตือน HQ เมื่อมี PR ใหม่เข้ามา | Branch Staff | **Must** *(คืนเต็มโดย CR-005)* | P8 |
 | **FR-010** | HQ ต้องตรวจสอบ/อนุมัติ/ปฏิเสธ PR และแปลงเป็น PO ได้ พร้อมบันทึกผู้อนุมัติ วันที่ และเหตุผล (ถ้าปฏิเสธ) | HQ Admin | **Must** *(คืนเต็มโดย CR-005)* | P8 |
 | **FR-011** | ระบบต้องบันทึก audit log ทุกการเปลี่ยนแปลงสต็อกและสถานะ PR/PO: ใคร/ทำอะไร/เมื่อไหร่/ที่ไหน/ค่าก่อน-หลัง | ระบบ (automated) | **Must** | P1 (5W2H) |
-| **FR-012** | ระบบต้องแจ้งเตือน Admin เมื่อยอดคงเหลือของ SKU ใดในสาขาใดต่ำกว่าจุดสั่งซื้อ (reorder point) ที่กำหนดไว้**ต่อ SKU ต่อสาขา** *(แก้ตาม CR-002)* | HQ Admin | **Should** *(คืนโดย CR-005)* | โน้ตหน้า 2 (alert สินค้าใกล้หมด) |
+| **FR-012** | ระบบต้องแจ้งเตือน Admin เมื่อยอดคงเหลือของ SKU ใดในสาขาใดต่ำกว่าจุดสั่งซื้อ (reorder point) ที่กำหนดไว้**ต่อ SKU ต่อสาขา** *(แก้ตาม CR-002)* **ผ่านช่องทางอีเมล** *(กลไกแจ้งเตือนเพิ่มโดย CR-006)* | HQ Admin | **Should** *(คืนโดย CR-005)* | โน้ตหน้า 2 (alert สินค้าใกล้หมด) |
+| **FR-013** *(เพิ่มโดย CR-007)* | ระบบต้องให้ Admin เพิ่ม/ลบรูปภาพสินค้าได้สูงสุด **5 รูปต่อ SKU** โดยเก็บเป็น URL | HQ Admin | **Should** | ทีมขอเพิ่ม 2026-08-24 |
+| **FR-014** *(เพิ่มโดย CR-008)* | ระบบต้องแสดง Dashboard สรุปตัวเลขสำคัญ (KPI) สำหรับทั้ง Admin (ภาพรวมทุกสาขา) และ Branch (เฉพาะสาขาตัวเอง) โดยใช้ข้อมูลจาก endpoint ที่มีอยู่แล้ว | Admin, Branch Staff | **Should** | ทีมขอเพิ่ม 2026-08-24 |
 
 > 📌 **หมายเหตุ:** P9 (เป็นเว็บ), P10 (concept แบบ ihavecpu) และ P5 (อัพโหลด GitHub) **ไม่ใช่ FR** — P9/P10 เป็น solution decision (บันทึกไว้ใน NFR-USE-01 และจะกลายเป็น ADR ในขั้น Architecture) ส่วน P5 เป็นข้อกำหนดของวิชา ไม่ใช่ requirement ของระบบ จึงไม่ใส่ใน SRS (ดู Deck 02 สไลด์ 22 — anti-pattern "Implementation-biased")
 
@@ -167,7 +169,9 @@
 | FR-009 | P8 | US-06 | ER: `PURCHASE_REQUEST` · API: `POST /api/purchase-requests` | `test_purchase_requests.py` (4 tests) | ✅ Implemented + Tested |
 | FR-010 | P8 | US-07 | ER: `PURCHASE_ORDER` · API: `POST .../approve`, `.../reject` (conditional-update pattern เดียวกับ ADR-002) | `test_purchase_requests.py` (4 tests รวม double-approve) | ✅ Implemented + Tested |
 | FR-011 | P1 | — (cross-cutting) | ER: `AUDIT_LOG` + `services/audit.py` เรียกจากทุก mutating endpoint · API: `GET /api/audit-log` | `test_audit_log.py` (3 tests) | ✅ Implemented + Tested — **ยกเว้น**: FR-009 "แจ้งเตือน HQ" ยังเป็นแค่ query ผ่าน `?status=Pending` ไม่มี push/email จริง |
-| FR-012 | โน้ตหน้า 2 | US-08 | ER: `BRANCH_SKU.reorder_point` · API: `GET/PUT /api/branch-sku/{branch_id}/{sku_id}` | `test_branch_sku.py` (4 tests) | 🟡 ตั้งค่า+แสดงผลทำแล้ว **แต่ยังไม่มีกลไกแจ้งเตือน (alert) จริง** |
+| FR-012 | โน้ตหน้า 2 | US-08 | ER: `BRANCH_SKU.reorder_point` + `low_stock_alert_sent_at` · API: `GET/PUT /api/branch-sku/{branch_id}/{sku_id}` · `services/stock_alerts.py`, `services/notifications.py` (CR-006) | `test_branch_sku.py` (4 tests) + `test_stock_alerts.py` (3 tests: debounce ยิงครั้งเดียว, reset หลัง restock, ไม่ยิงถ้าไม่ตั้ง reorder point) | ✅ Implemented + Tested — ส่งอีเมลจริงยังไม่ verify (ไม่มี SMTP credential ให้ AI ทดสอบ ดู CR-006) แต่ debounce logic verify ครบผ่าน monkeypatch |
+| FR-013 *(CR-007)* | ทีมขอเพิ่ม 2026-08-24 | — (cross-cutting, ผูกกับ US-02) | ER: `PRODUCT_IMAGE` (แยกตาราง ตามหลัก 1NF) · API: `POST/DELETE /api/products/{id}/images` | `test_product_images.py` (7 tests: add/403/422/max-5/cascade) | ✅ Implemented + Tested — verify ผ่าน browser จริงด้วย (`Products.jsx` เพิ่ม/ลบรูป, เห็น thumbnail, นับ 0-5/5) |
+| FR-014 *(CR-008)* | ทีมขอเพิ่ม 2026-08-24 | — (cross-cutting) | ใช้ endpoint เดิมที่มีอยู่แล้ว (`/api/stock`, `/api/products`, `/api/purchase-requests`, `/api/branches`) ไม่มี endpoint ใหม่ | ไม่มี backend test แยก (ไม่มี logic ใหม่ฝั่ง server) | ✅ Implemented — verify ผ่าน browser จริงทั้ง Admin (`admin/Dashboard.jsx`) และ Branch (`branch/Dashboard.jsx`) เห็นตัวเลข KPI ตรงกับข้อมูลจริงใน DB |
 | NFR-PERF-01 | — | US-01 | Quality Attribute Scenario #2 | ยังไม่ทำ load test | 🏗️ Design Complete (สัปดาห์ 7) |
 | NFR-SEC-01 | — | US-01 | API response schema (ไม่มี field buyer) · STRIDE-I | `test_public_warranty.py::test_warranty_check_valid_serial_returns_status_without_buyer_info` | ✅ Implemented + Tested |
 | NFR-SEC-02 | P8 | US-05 | Middleware role-check ทุก endpoint · STRIDE-T | 4 test ยืนยัน 403 (products, branch_sku, sales, stock) | ✅ Implemented + Tested |
@@ -176,7 +180,7 @@
 | NFR-MAINT-01 | — | — (cross-cutting) | index บน `audit_logs.occurred_at`/`entity_id` มีแล้วใน DB แต่ยังไม่มี endpoint ให้ query | — | 🏗️ Design Complete |
 | NFR-PRIV-01 | CR-001 | US-04 | ยังไม่ implement `POST /api/admin/purge-old-buyer-data` | — | 🏗️ Design Complete (สัปดาห์ 7 ตามแผน) |
 
-**⚠️ Orphan check:** ทุก FR/NFR มี Source และเกือบทุกข้อมี User Story เชื่อม ยกเว้น FR-007, FR-011, NFR-USE-01, NFR-MAINT-01 ที่เป็น cross-cutting requirement (ไม่ผูกกับ story เดียว แต่ครอบทั้งระบบ) — เป็นเรื่องปกติตาม Deck 02 สไลด์ 64 (NFR และ cross-cutting constraints ต้องบริหารแยกจาก backlog ปกติ)
+**⚠️ Orphan check:** ทุก FR/NFR มี Source และเกือบทุกข้อมี User Story เชื่อม ยกเว้น FR-007, FR-011, FR-013, FR-014, NFR-USE-01, NFR-MAINT-01 ที่เป็น cross-cutting requirement (ไม่ผูกกับ story เดียว แต่ครอบทั้งระบบ) — เป็นเรื่องปกติตาม Deck 02 สไลด์ 64 (NFR และ cross-cutting constraints ต้องบริหารแยกจาก backlog ปกติ) FR-013/FR-014 ไม่มี User Story แยกเพราะเป็นการเสริมของหน้าที่มีอยู่แล้ว (US-02 เพิ่มสินค้า, และภาพรวม dashboard) ไม่ใช่ flow ใหม่
 
 ---
 
@@ -218,3 +222,30 @@
 - **Impact:** FR-009, FR-010 (PR→PO flow) กลับเป็น **Must** เต็มรูปแบบ (ตรงกับ "business rules" ที่โจทย์ระบุเป็นความท้าทายหลัก ไม่ควรเป็นแค่ทางเลือกอีกต่อไปเมื่อมีเวลาพอ) · FR-012 กลับเป็น **Should** · NFR-PERF-01 คืนเป็น spec เดิม (200 concurrent users ที่ P95 2 วินาที) แทนที่จะลดเหลือ 50-100
 - **ตัดสินใจ:** Approved — แผนงาน 8 สัปดาห์อยู่ในสรุปท้ายเอกสารนี้และในแชท
 - ⚠️ **หมายเหตุถึงทีม:** ไทม์ไลน์เปลี่ยน 3 ครั้งในรอบเดียวกัน หากยังไม่แน่ใจ 100% แนะนำให้ยืนยันกับอาจารย์/ปฏิทินจริงอีกครั้งก่อนวางแผนต่อ เพราะทุกครั้งที่แก้ต้องเสียเวลา re-scope Architecture ที่กำลังจะเริ่ม
+
+### CR-006: เพิ่ม FR ใหม่ — ระบบแจ้งเตือนสต็อกใกล้หมดผ่าน email (ทำ FR-012 ให้สมบูรณ์)
+- **เหตุผล:** FR-012 เดิมมีแค่การตั้งค่า/แสดงผล reorder point แต่ไม่มีกลไก "แจ้งเตือน" จริงตามที่ข้อความ FR-012 สัญญาไว้ — ทีมขอให้เพิ่มช่องทาง email
+- **การตัดสินใจออกแบบ:** ส่งไปที่ **`ALERT_EMAIL`** เดียว (ตั้งค่าแบบ env var เหมือน `DATABASE_URL`) แทนที่จะเพิ่ม field `email` ให้ทุก User — ลดความซับซ้อนของ ER Model และเพียงพอกับ scope ปัจจุบัน (มี Admin ไม่กี่คน)
+- **Impact:** เพิ่ม column `branch_skus.low_stock_alert_sent_at` (debounce กันส่งซ้ำ) · เพิ่ม service `notifications.py` + `stock_alerts.py` · เพิ่ม SMTP config 5 ตัวใน `.env.example` · **ต้อง fail-safe** — ถ้าส่ง email ไม่สำเร็จ ห้ามทำให้ธุรกรรมขาย (business-critical) ล้มเหลวตาม
+- **ข้อจำกัดที่ต้องรู้:** AI ไม่มี SMTP credential จริงให้ทดสอบการส่งจริง — ออกแบบให้ระบบ log แทนการส่ง (dev-mode fallback) เมื่อไม่ได้ตั้งค่า SMTP ทีมต้องหา SMTP provider เอง (เช่น Gmail app password, Resend, SendGrid free tier) แล้วตั้งค่าเองทั้ง local และบน Render — **AI จะไม่ขอ/รับรหัสผ่าน SMTP ผ่านแชทเด็ดขาด**
+- **ตัดสินใจ:** Approved
+
+### CR-007: เพิ่ม FR ใหม่ — เก็บรูปสินค้าได้สูงสุด 5 รูปต่อ SKU (FR-013)
+- **เหตุผล:** ทีมต้องการให้สินค้ามีรูปประกอบ
+- **การตัดสินใจออกแบบ:** เก็บเป็น **URL** (ทีมกรอกลิงก์รูปที่ host ไว้ที่อื่น) **ไม่ใช่ไฟล์อัปโหลดจริง** เหตุผลทางเทคนิค: **Render free tier web service ไม่มี persistent disk** — ไฟล์ที่ save ไว้จะหายทุกครั้งที่ redeploy ถ้าจะอัปโหลดไฟล์จริงต้องมี object storage service แยก (เช่น Cloudinary) ซึ่งเพิ่ม secret + dependency + เวลาสร้างมากกว่าที่คุ้มกับเวลาที่เหลือ
+- **Schema:** ตาราง `product_images` แยก (product_id, image_url, sort_order) — **ไม่ใช่คอลัมน์ image1-image5** ในตาราง Product (ผิดหลัก 1NF ตาม Deck 02/03)
+- **Impact:** ER Model เพิ่ม 1 ตาราง · API เพิ่ม `POST/DELETE /api/products/{id}/images` · Products admin UI ต้องมีช่องกรอก URL + preview + ปุ่มลบ
+- **ตัดสินใจ:** Approved
+
+### CR-008: เพิ่ม FR ใหม่ — Dashboard สรุป KPI (FR-014)
+- **เหตุผล:** Dashboard เดิม (Branch/Admin) มีแค่ตารางสต็อกดิบ ทีมต้องการเห็นภาพรวมเป็นตัวเลขสรุป
+- **การตัดสินใจออกแบบ:** ปรับ Dashboard เดิมให้มีการ์ดสรุปด้านบน **ไม่สร้างหน้าใหม่แยก** — ใช้ข้อมูลจาก endpoint ที่มีอยู่แล้วเท่านั้น (`/api/stock`, `/api/purchase-requests`) เพื่อไม่ต้องเพิ่ม endpoint ใหม่ที่ไม่จำเป็น
+- **ขอบเขตที่ตัดออกตรง ๆ:** ไม่มี KPI เกี่ยวกับ "ยอดขาย" (เช่น ยอดขายวันนี้/มูลค่ารวม) เพราะ ① Product ไม่มี field ราคา ② ยังไม่มี endpoint list การขาย — ถ้าต้องการ KPI นี้ในอนาคตต้องเปิด CR ใหม่
+- **Impact:** ไม่กระทบ ER Model/API เลย เป็นแค่ frontend เปลี่ยน UI
+- **ตัดสินใจ:** Approved
+
+### CR-009: ขยาย Seed Data — หมวดหมู่ละ 10 รายการ
+- **เหตุผล:** เพื่อให้ demo และการทดสอบ UI ดูสมจริง ไม่ใช่ระบบว่างเปล่า
+- **Impact:** `scripts/seed.py` ขยายเป็น 6 หมวดหมู่ × 10 = 60 สินค้า พร้อม Item รับเข้าจริงบางส่วน, Sale ตัวอย่าง, PR หลายสถานะ, รูปภาพตัวอย่างบางรายการ (ใช้ placeholder image service ไม่ใช่รูปจริง)
+- **ลำดับ:** ทำเป็นลำดับสุดท้ายหลัง CR-006/007 เสร็จ เพื่อให้ seed สะท้อน schema สุดท้าย ไม่ต้องแก้ซ้ำ
+- **ตัดสินใจ:** Approved

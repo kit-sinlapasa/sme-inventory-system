@@ -4,6 +4,7 @@ from app.models.branch import Branch  # noqa: F401
 from app.models.branch_sku import BranchSKU  # noqa: F401
 from app.models.item import Item  # noqa: F401
 from app.models.product import Product  # noqa: F401
+from app.models.product_image import ProductImage  # noqa: F401
 from app.models.purchase_order import PurchaseOrder  # noqa: F401
 from app.models.purchase_request import PurchaseRequest  # noqa: F401
 from app.models.sale import Sale  # noqa: F401

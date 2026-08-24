@@ -11,6 +11,16 @@ class Settings(BaseSettings):
     # NFR-PRIV-01 (CR-001) — จำนวนปีที่เก็บข้อมูลผู้ซื้อก่อนถูก purge
     DATA_RETENTION_YEARS: int = 3
 
+    # FR-012 / CR-006 — แจ้งเตือนสต็อกใกล้หมดผ่านอีเมล
+    # ว่างไว้ = dev-mode (log แทนการส่งจริง) — ทีมต้องตั้งค่าเองทั้ง local/.env และบน Render
+    # AI ไม่เคยเห็นหรือขอ credential เหล่านี้ ตั้งใจปล่อยว่างไว้ตลอด
+    ALERT_EMAIL: str = ""
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
 
     @field_validator("DATABASE_URL")
