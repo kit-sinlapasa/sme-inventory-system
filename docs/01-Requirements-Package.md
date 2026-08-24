@@ -92,7 +92,7 @@
 | **NFR-SEC-02** | Role Branch Staff ต้องไม่มีสิทธิ์เพิ่ม/แก้ไข/ลบสินค้าหรือจำนวนสต็อกในสต็อกหลัก — **ต้องบังคับใช้ที่ server ทุก endpoint** ไม่ใช่แค่ซ่อนปุ่มใน UI | ความปลอดภัย | **Must** | Automated test: ยิง API ตรงด้วย token สาขา → ต้องได้ 403 |
 | **NFR-REL-01** | การตัดสต็อก/จ่าย S/N ต้องเป็น **atomic operation** — S/N หนึ่งชิ้นต้องจ่ายออกได้เพียงครั้งเดียว แม้มี concurrent request เข้ามาพร้อมกัน | ความน่าเชื่อถือ | **Must** | Concurrency test |
 | **NFR-USE-01** | หน้าจอทั้งหมดใช้โทนสีขาว-ฟ้าสะอาดตา จัดหมวดหมู่สินค้าตามประเภทอะไหล่ (อ้างอิง ihavecpu.com) และผู้ใช้ใหม่ต้องทำ task ค้นหา/เช็คประกันสำเร็จ **≥90% ภายใน 60 วินาที** โดยไม่ต้องมีคนสอน | ความใช้งานง่าย | Should | Task-based user test |
-| **NFR-MAINT-01** | Audit log (FR-011) ต้องเก็บข้อมูลย้อนหลังได้อย่างน้อย **1 ปี** และค้นหาตาม S/N ได้ภายใน **3 วินาที** | การบำรุงรักษา | **Should** *(ยกจาก Could โดย CR-005 — low effort, ผูกกับ FR-011 ที่เป็น Must อยู่แล้ว)* | Query test + operational evidence |
+| **NFR-MAINT-01** | Audit log (FR-011) ต้องเก็บข้อมูลย้อนหลังได้อย่างน้อย **1 ปี** และค้นหาตาม S/N ได้ภายใน **3 วินาที** | การบำรุงรักษา | **Should** *(ยกจาก Could โดย CR-005 — low effort, ผูกกับ FR-011 ที่เป็น Must อยู่แล้ว)* | `GET /api/audit-log` ใช้ index บน `entity_id`/`occurred_at` แล้ว — ยังไม่มี load test วัดเวลาจริงที่ scale ใหญ่ |
 | **NFR-PRIV-01** *(เพิ่มโดย CR-001)* | ข้อมูลผู้ซื้อ (ชื่อ/เบอร์โทร ใน FR-004) ต้องถูกเก็บไม่เกิน **3 ปีหลังวันหมดประกัน** หลังจากนั้นต้อง anonymize หรือลบ · เข้าถึงได้เฉพาะ role Admin/Branch Staff ที่เกี่ยวข้องกับการขายนั้น | ความเป็นส่วนตัว | **Must** | Data retention job test + access log review |
 
 ---
@@ -164,9 +164,9 @@
 | FR-006 | P7 | US-01 | API: `GET /api/public/warranty/{serial}` | `test_public_warranty.py` (3 tests) | ✅ Implemented + Tested |
 | FR-007 | โน้ตเดิม FR#2 | — (cross-cutting) | API: `POST /api/auth/login` | ครอบคลุมทางอ้อมทุก test ที่ login | ✅ Implemented + Tested |
 | FR-008 | P8 | US-05 | API: `GET /api/products`, `GET /api/stock` (role=Branch) | `test_items_and_stock.py::test_branch_staff_only_sees_own_branch_stock` | ✅ Implemented + Tested |
-| FR-009 | P8 | US-06 | ER: `PURCHASE_REQUEST` · API: `POST /api/purchase-requests` | — | 🏗️ Design Complete (สัปดาห์ 3+) |
-| FR-010 | P8 | US-07 | ER: `PURCHASE_ORDER` · API: `POST .../approve`, `.../reject` | — | 🏗️ Design Complete (สัปดาห์ 3+) |
-| FR-011 | P1 | — (cross-cutting) | ER: `AUDIT_LOG` + `services/audit.py` เรียกจากทุก mutating endpoint | ยังไม่มี test เฉพาะ | 🟡 เขียน log ทำงานแล้ว **แต่ยังไม่มี `GET /api/audit-log` ให้ค้นดู** |
+| FR-009 | P8 | US-06 | ER: `PURCHASE_REQUEST` · API: `POST /api/purchase-requests` | `test_purchase_requests.py` (4 tests) | ✅ Implemented + Tested |
+| FR-010 | P8 | US-07 | ER: `PURCHASE_ORDER` · API: `POST .../approve`, `.../reject` (conditional-update pattern เดียวกับ ADR-002) | `test_purchase_requests.py` (4 tests รวม double-approve) | ✅ Implemented + Tested |
+| FR-011 | P1 | — (cross-cutting) | ER: `AUDIT_LOG` + `services/audit.py` เรียกจากทุก mutating endpoint · API: `GET /api/audit-log` | `test_audit_log.py` (3 tests) | ✅ Implemented + Tested — **ยกเว้น**: FR-009 "แจ้งเตือน HQ" ยังเป็นแค่ query ผ่าน `?status=Pending` ไม่มี push/email จริง |
 | FR-012 | โน้ตหน้า 2 | US-08 | ER: `BRANCH_SKU.reorder_point` · API: `GET/PUT /api/branch-sku/{branch_id}/{sku_id}` | `test_branch_sku.py` (4 tests) | 🟡 ตั้งค่า+แสดงผลทำแล้ว **แต่ยังไม่มีกลไกแจ้งเตือน (alert) จริง** |
 | NFR-PERF-01 | — | US-01 | Quality Attribute Scenario #2 | ยังไม่ทำ load test | 🏗️ Design Complete (สัปดาห์ 7) |
 | NFR-SEC-01 | — | US-01 | API response schema (ไม่มี field buyer) · STRIDE-I | `test_public_warranty.py::test_warranty_check_valid_serial_returns_status_without_buyer_info` | ✅ Implemented + Tested |

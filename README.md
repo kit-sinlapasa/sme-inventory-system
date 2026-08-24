@@ -62,12 +62,13 @@ npm run dev
 | ดูสต็อกเรียลไทม์ แยกตามสาขา (FR-003) | ✅ ใช้งานได้ + test |
 | บันทึกการขาย + concurrency (FR-004/005, NFR-REL-01) | ✅ ใช้งานได้ + **รันจริงแล้ว: concurrency test 10 thread แข่งกัน ผ่าน** |
 | เช็คประกันสาธารณะ (FR-006) | ✅ ใช้งานได้ (backend+frontend) |
-| Reorder point ต่อสาขา (FR-012) | 🟡 ตั้งค่า+แสดงผลทำแล้ว ยังไม่มีกลไกแจ้งเตือน |
-| Audit log (FR-011) | 🟡 บันทึกอัตโนมัติทุก mutation แล้ว ยังไม่มี endpoint ให้ค้นดู |
-| PR→PO flow (FR-009/010), alerts, หน้า Branch/Admin UI | 🔲 TODO สัปดาห์ 3+ — ดู endpoint list เต็มใน `docs/03-Architecture-Design.md` ส่วนที่ 5 |
+| Reorder point ต่อสาขา (FR-012) | 🟡 ตั้งค่า+แสดงผลทำแล้ว ยังไม่มีกลไกแจ้งเตือน (alert) จริง |
+| PR→PO flow (FR-009/010) | ✅ ใช้งานได้ + test — approve/reject กัน double-submit ด้วย pattern เดียวกับ ADR-002 |
+| Audit log (FR-011) | ✅ ใช้งานได้ + test — `GET /api/audit-log` ค้นย้อนหลังได้ (Admin เท่านั้น) |
+| Alerts จริง, หน้า Branch/Admin UI | 🔲 TODO สัปดาห์ 4+ — ดู endpoint list เต็มใน `docs/03-Architecture-Design.md` ส่วนที่ 5 |
 | Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน |
 
-> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 20 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
+> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 31 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
 
 ## โครงสร้างโปรเจกต์
 ดูเหตุผลของโครงสร้างนี้ใน ADR-003 (`docs/03-Architecture-Design.md`)
