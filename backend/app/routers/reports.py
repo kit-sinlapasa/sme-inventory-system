@@ -88,9 +88,10 @@ def summary(
     bid = _scope_branch(current_user, branch_id)
 
     on_hand_q = db.query(func.count(Item.id)).filter(Item.status == "InStock")
+    # ใช้นิยามอายุเดียวกับถัง "180+" ของกราฟอายุสต็อก — ตัวเลขทั้งสองอยู่บนหน้าจอเดียวกัน
     dead_q = db.query(func.count(Item.id)).filter(
         Item.status == "InStock",
-        Item.received_at < _cutoff(180),
+        ITEM_AGE_DAYS > DEAD_STOCK_DAYS,
     )
     if bid is not None:
         on_hand_q = on_hand_q.filter(Item.branch_id == bid)
@@ -106,15 +107,23 @@ def summary(
         prev_q = prev_q.filter(Sale.branch_id == bid)
 
     # ใกล้หมด = ยอดคงเหลือ <= จุดสั่งซื้อ และมีการตั้งจุดสั่งซื้อไว้จริง (0 = ไม่ track)
+    #
+    # ตัวเลขนี้**รวมรายการที่ของหมดเกลี้ยงแล้ว (คงเหลือ 0)** ด้วย ซึ่งจงใจ เพราะของหมดคือ
+    # กรณีที่แย่ที่สุดของ "ใกล้หมด" ไม่ใช่คนละเรื่อง · แต่ต้องระวังว่าตารางสต็อกด้านล่าง
+    # นับรายการเหล่านี้ไม่ได้ เพราะ `/api/stock` JOIN กับ Item ที่ InStock อยู่ ถ้าไม่มีของ
+    # เหลือเลยก็ไม่มีแถวให้ไฮไลต์ — จำนวนแถวแดงในตารางจึงน้อยกว่าเลข KPI เสมอ
+    # หน้าจอต้องเขียนกำกับให้ชัดว่า KPI รวมของที่หมดแล้วด้วย ไม่งั้นดูเหมือนสองที่นับไม่ตรงกัน
     on_hand_sub = (
         db.query(func.count(Item.id))
         .filter(Item.sku_id == BranchSKU.sku_id, Item.branch_id == BranchSKU.branch_id, Item.status == "InStock")
         .scalar_subquery()
     )
     low_q = db.query(func.count(BranchSKU.id)).filter(BranchSKU.reorder_point > 0, on_hand_sub <= BranchSKU.reorder_point)
+    out_q = db.query(func.count(BranchSKU.id)).filter(BranchSKU.reorder_point > 0, on_hand_sub == 0)
     pending_q = db.query(func.count(PurchaseRequest.id)).filter(PurchaseRequest.status == "Pending")
     if bid is not None:
         low_q = low_q.filter(BranchSKU.branch_id == bid)
+        out_q = out_q.filter(BranchSKU.branch_id == bid)
         pending_q = pending_q.filter(PurchaseRequest.branch_id == bid)
 
     return KpiSummary(
@@ -122,6 +131,7 @@ def summary(
         sold_in_period=sold_now,
         sold_prev_period=prev_q.scalar(),
         low_stock_skus=low_q.scalar(),
+        out_of_stock_skus=out_q.scalar(),
         dead_stock_items=dead_q.scalar(),
         pending_requests=pending_q.scalar(),
     )
@@ -182,6 +192,13 @@ def top_products(
 
 AGING_BUCKETS = ["0-30", "31-90", "91-180", "180+"]
 
+# อายุของสินค้าเป็น "จำนวนวันเต็ม" — ต้องใช้นิยามเดียวกันทั้ง KPI และกราฟอายุสต็อก
+# เพราะทั้งสองแสดงอยู่บนหน้าจอเดียวกัน ถ้านิยามต่างกันแม้แต่นิดเดียว
+# (เช่น เทียบ timestamp ตรง ๆ ในที่หนึ่ง แต่ตัดเศษวันในอีกที่หนึ่ง)
+# ตัวเลขจะไม่ตรงกัน 1-2 ชิ้นตลอดเวลาโดยไม่มีอะไรผิดพลาดให้เห็น
+ITEM_AGE_DAYS = func.extract("day", func.now() - Item.received_at)
+DEAD_STOCK_DAYS = 180
+
 # ระยะเวลานำสั่ง — ของที่จะหมดภายในกี่วันถึงจะนับว่า "เสี่ยง"
 # ตั้งไว้ 14 วันเพราะเป็นรอบสั่งของจากซัพพลายเออร์โดยประมาณของร้านอะไหล่คอม
 # ถ้าธุรกิจจริงมีรอบสั่งต่างจากนี้ ให้แก้ค่านี้ค่าเดียว ไม่ต้องไล่แก้เงื่อนไขในโค้ด
@@ -199,11 +216,10 @@ def stock_aging(
     ไม่ผูกกับช่วงเวลาที่เลือก เพราะเป็นภาพ ณ ปัจจุบัน ไม่ใช่ยอดสะสมในช่วง
     """
     bid = _scope_branch(current_user, branch_id)
-    age_days = func.extract("day", func.now() - Item.received_at)
     bucket = case(
-        (age_days <= 30, "0-30"),
-        (age_days <= 90, "31-90"),
-        (age_days <= 180, "91-180"),
+        (ITEM_AGE_DAYS <= 30, "0-30"),
+        (ITEM_AGE_DAYS <= 90, "31-90"),
+        (ITEM_AGE_DAYS <= DEAD_STOCK_DAYS, "91-180"),
         else_="180+",
     ).label("bucket")
 

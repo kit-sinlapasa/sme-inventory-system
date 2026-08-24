@@ -19,8 +19,9 @@ class KpiSummary(BaseModel):
     on_hand: int
     sold_in_period: int
     sold_prev_period: int
-    low_stock_skus: int
-    dead_stock_items: int  # ค้างเกิน 180 วัน
+    low_stock_skus: int  # รวมรายการที่ของหมดแล้ว — ของหมดคือกรณีแย่ที่สุดของ "ใกล้หมด"
+    out_of_stock_skus: int  # ส่วนย่อยของ low_stock_skus ที่คงเหลือ = 0 (ตารางสต็อกแสดงไม่ได้)
+    dead_stock_items: int  # ค้างเกิน 180 วัน — นิยามอายุเดียวกับถัง '180+' ของกราฟอายุสต็อก
     pending_requests: int
 
 

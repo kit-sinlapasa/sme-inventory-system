@@ -277,5 +277,56 @@ def test_stockout_risk_ranks_by_days_left_not_raw_quantity(
     assert rows[1]["days_left"] is None  # ไม่เคยขาย -> ประมาณไม่ได้ ไม่ใช่ 0
 
 
+def test_dead_stock_kpi_matches_the_180_plus_aging_bucket(client, db, branch, product, admin_token):
+    """
+    KPI "ค้างสต็อกเกิน 180 วัน" กับแท่ง "180+" ของกราฟอายุสต็อก อยู่บนหน้าจอเดียวกัน
+    จึงต้องเท่ากันเสมอ
+
+    เคสที่เคยทำให้ไม่ตรงกัน: ของอายุ 180.5 วัน — ถ้า KPI เทียบ timestamp ตรง ๆ จะนับว่าเกิน
+    แต่กราฟตัดเศษวันเหลือ 180 จึงไปอยู่ถัง "91-180" ผลคือตัวเลขต่างกัน 1 ชิ้นตลอดเวลา
+    โดยไม่มีอะไรผิดพลาดให้เห็นบนหน้าจอ
+    """
+    now = datetime.now(timezone.utc)
+    for i, hours_past_180 in enumerate([-12, 12, 24 * 30]):  # ก่อนเส้น / คร่อมเส้น / เกินไปไกล
+        db.add(
+            Item(
+                sku_id=product.id, serial_number=f"SN-EDGE-{i}", branch_id=branch.id, status="InStock",
+                received_at=now - timedelta(days=180, hours=hours_past_180),
+            )
+        )
+    db.commit()
+
+    kpi = client.get("/api/reports/summary", headers=auth(admin_token)).json()["dead_stock_items"]
+    buckets = client.get("/api/reports/stock-aging", headers=auth(admin_token)).json()
+    over_180 = next(b["qty"] for b in buckets if b["bucket"] == "180+")
+
+    assert kpi == over_180, f"KPI={kpi} but 180+ bucket={over_180}"
+    assert sum(b["qty"] for b in buckets) == 3  # ทุกชิ้นต้องถูกจัดลงถังใดถังหนึ่ง ไม่มีตกหล่น
+
+
+def test_low_stock_kpi_reports_the_out_of_stock_subset(client, db, branch, product, other_product, admin_token):
+    """
+    KPI ใกล้หมดรวมรายการที่ของหมดเกลี้ยงแล้วด้วย (ของหมด = กรณีแย่สุดของใกล้หมด)
+    แต่ตารางสต็อกด้านล่างแสดงรายการเหล่านั้นไม่ได้ เพราะ /api/stock JOIN กับ Item ที่ InStock
+
+    endpoint จึงต้องคืนจำนวนของที่หมดแยกออกมา ให้หน้าจอเขียนกำกับได้ว่าเลขต่างกันเพราะอะไร
+    ไม่งั้นผู้ใช้เห็น KPI = 2 แต่นับแถวแดงในตารางได้ 1 แล้วสรุปว่าระบบนับผิด
+    """
+    from app.models.branch_sku import BranchSKU
+
+    db.add(BranchSKU(branch_id=branch.id, sku_id=product.id, reorder_point=5))  # มีของแต่ต่ำ
+    db.add(BranchSKU(branch_id=branch.id, sku_id=other_product.id, reorder_point=5))  # ไม่มีของเลย
+    db.add(Item(sku_id=product.id, serial_number="SN-LOW-1", branch_id=branch.id, status="InStock"))
+    db.commit()
+
+    body = client.get("/api/reports/summary", headers=auth(admin_token)).json()
+    assert body["low_stock_skus"] == 2
+    assert body["out_of_stock_skus"] == 1
+
+    # ยืนยันว่าตารางสต็อกแสดงได้จริงแค่รายการเดียว — คือที่มาของส่วนต่าง
+    stock = client.get("/api/stock", headers=auth(admin_token)).json()
+    assert len(stock) == 1 and stock[0]["sku_id"] == product.id
+
+
 def test_reports_require_authentication(client):
     assert client.get("/api/reports/summary").status_code == 401
