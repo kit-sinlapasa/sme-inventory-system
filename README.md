@@ -43,13 +43,27 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 > **ถ้าฐานข้อมูลมีข้อมูลอยู่แล้ว** `scripts.seed` จะ**ไม่ทำอะไรและ exit 1** เพื่อกันการเขียนทับโดยไม่ตั้งใจ
-> ถ้าต้องการแทนที่ด้วยชุดใหม่ (เช่นตอนอัปเดตข้อมูลสาธิตขึ้น production) ให้ใช้:
+> ต้องใส่ `--reset` ถึงจะเขียนทับ · `--reset` **ลบข้อมูลในทุกตารางทิ้งก่อน** ใช้กับฐานข้อมูลสาธิตเท่านั้น
 >
-> ```bash
-> DATABASE_URL="<External Database URL จาก Render dashboard>" python -m scripts.seed --reset
+> **อัปเดตข้อมูลสาธิตบน production (Windows):**
+>
+> ```powershell
+> cd backend; .\scriptseseed_remote.ps1
 > ```
 >
-> `--reset` **ลบข้อมูลในทุกตารางทิ้งก่อน** — ใช้กับฐานข้อมูลสาธิตเท่านั้น ห้ามใช้กับข้อมูลจริง
+> แล้ววาง **External** Database URL ตอนที่สคริปต์ถาม — อย่าพิมพ์เป็น `$env:DATABASE_URL="..."` เอง
+> เพราะ PowerShell แปลง `$` ใน double quote เป็นชื่อตัวแปร ถ้ารหัสผ่านมี `$` URL จะเพี้ยนเงียบ ๆ
+> จนรันแล้วเหมือนสำเร็จแต่ข้อมูลไม่เปลี่ยน (เกิดขึ้นจริงมาแล้ว) · สคริปต์รับค่าผ่าน `Read-Host`
+> จึงไม่ผ่าน interpolation เลย และล้างตัวแปรทิ้งให้ตอนจบ
+>
+> **บน macOS/Linux หรือ Git Bash:**
+>
+> ```bash
+> cd backend && DATABASE_URL='<External Database URL>' python -m scripts.seed --reset
+> ```
+>
+> ใช้ single quote เสมอด้วยเหตุผลเดียวกัน · บรรทัดแรกที่ออกมาต้องขึ้น `☁️ รีโมต host=dpg-...render.com`
+> ถ้าขึ้น `🖥️ เครื่องนี้ (local)` แปลว่าตัวแปรไม่ติด ให้หยุดทันที
 
 ```bash
 # 3. Frontend (terminal ใหม่)
