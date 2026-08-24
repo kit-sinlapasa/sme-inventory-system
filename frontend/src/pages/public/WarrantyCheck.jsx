@@ -24,21 +24,21 @@ export default function WarrantyCheck() {
   }
 
   return (
-    <main className="min-h-screen bg-brand-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-xl shadow-md p-8 w-full max-w-md">
-        <h1 className="text-xl font-semibold text-brand-900 mb-1">ตรวจสอบสถานะการรับประกัน</h1>
-        <p className="text-sm text-gray-500 mb-4">กรอกหมายเลขซีเรียล (S/N) บนตัวสินค้า</p>
+    <main className="rd-page flex items-center justify-center p-6">
+      <div className="rd-card p-8 w-full max-w-md">
+        <h1 className="rd-title text-xl mb-1">ตรวจสอบสถานะการรับประกัน</h1>
+        <p className="text-sm text-ink-muted mb-4">กรอกหมายเลขซีเรียล (S/N) บนตัวสินค้า</p>
 
         <form onSubmit={handleCheck} className="flex gap-2">
           <input
-            className="flex-1 border border-brand-100 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-600"
+            className="rd-input flex-1"
             placeholder="เช่น SN-0001234"
             value={serial}
             onChange={(e) => setSerial(e.target.value)}
             required
           />
           <button
-            className="bg-brand-600 text-white px-4 py-2 rounded hover:bg-brand-900 transition disabled:opacity-50"
+            className="rd-btn"
             type="submit"
             disabled={loading}
           >
@@ -47,7 +47,7 @@ export default function WarrantyCheck() {
         </form>
 
         {result && (
-          <div className="mt-4 p-4 bg-brand-100 rounded space-y-1 text-brand-900">
+          <div className="mt-4 p-4 bg-ink-accentSoft rounded-lg space-y-1 text-ink-text">
             <p>
               <span className="font-medium">รุ่นสินค้า:</span> {result.model}
             </p>
@@ -62,7 +62,7 @@ export default function WarrantyCheck() {
         )}
 
         {notFound && (
-          <p className="mt-4 text-red-600 text-sm">ไม่พบข้อมูล กรุณาตรวจสอบ S/N อีกครั้ง</p>
+          <p className="mt-4 text-[#d03b3b] text-sm">ไม่พบข้อมูล กรุณาตรวจสอบ S/N อีกครั้ง</p>
         )}
       </div>
     </main>

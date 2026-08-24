@@ -1,3 +1,96 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * CR-010 — ธีมทั้งระบบอิงสีจริงจาก dashboard.render.com (ตรวจด้วย getComputedStyle
+ * จากหน้าจริง ไม่ใช่เดา): พื้นสว่าง #f9f9f7/#fcfcfb, ตัวอักษร #0b0b0b, เส้นขอบ #e5e7eb,
+ * ม่วง #7a3ff1 เป็นสี accent, ปุ่มหลักสีดำ #0d0d0d ตามสไตล์ Render
+ *
+ * รวม class ไว้ที่นี่ที่เดียวแทนการพิมพ์ Tailwind ซ้ำทุกหน้า — เวลาปรับธีมจะได้แก้จุดเดียว
+ * และทุกหน้าเปลี่ยนตามพร้อมกัน (ก่อนหน้านี้ธีมกระจายอยู่ในแต่ละไฟล์ทำให้หน้าตาไม่ตรงกัน)
+ */
+@layer components {
+  .rd-page {
+    @apply min-h-screen bg-ink-bg text-ink-text;
+  }
+
+  .rd-card {
+    @apply bg-ink-surface border border-ink-border rounded-xl;
+  }
+
+  .rd-title {
+    @apply text-lg font-semibold text-ink-text;
+  }
+
+  .rd-label {
+    @apply block text-sm text-ink-muted mb-1;
+  }
+
+  .rd-input {
+    @apply w-full rounded-lg border border-ink-border bg-ink-surface px-3 py-2 text-sm text-ink-text
+           placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-ink-accent/40
+           focus:border-ink-accent;
+  }
+
+  /* ปุ่มหลักสีดำตาม Render (ไม่ใช่สีม่วง — ม่วงสงวนไว้ให้ลิงก์/ตัวชี้สถานะ) */
+  .rd-btn {
+    @apply inline-flex items-center justify-center rounded-lg bg-[#0d0d0d] px-4 py-2 text-sm
+           font-medium text-white transition hover:bg-[#2a2a2a] disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+
+  .rd-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-ink-border bg-ink-surface
+           px-3 py-2 text-sm text-ink-text transition hover:bg-ink-accentSoft
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .rd-btn-danger {
+    @apply inline-flex items-center justify-center rounded-lg border border-[#d03b3b]/40 bg-ink-surface
+           px-3 py-2 text-sm text-[#d03b3b] transition hover:bg-[#fdf2f2]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .rd-link {
+    @apply text-ink-accent hover:underline;
+  }
+
+  .rd-table {
+    @apply w-full text-sm;
+  }
+
+  .rd-th {
+    @apply px-4 py-3 text-left font-medium text-ink-muted;
+  }
+
+  .rd-td {
+    @apply px-4 py-3 text-ink-text;
+  }
+
+  .rd-tr {
+    @apply border-t border-ink-border;
+  }
+
+  /* ป้ายสถานะ — ใช้ status palette เดียวกับกราฟ (ดู dataviz skill) มีข้อความกำกับเสมอ
+     ไม่ได้สื่อความหมายด้วยสีอย่างเดียว */
+  .rd-badge {
+    @apply inline-block rounded px-2 py-0.5 text-xs whitespace-nowrap;
+  }
+
+  .rd-badge-pending {
+    @apply bg-[#fff8e6] text-[#a3690f];
+  }
+
+  .rd-badge-approved {
+    @apply bg-[#e8f5e9] text-[#0a7d0a];
+  }
+
+  .rd-badge-rejected {
+    @apply bg-[#fdf2f2] text-[#d03b3b];
+  }
+
+  .rd-badge-muted {
+    @apply bg-[#f0f0f0] text-ink-muted;
+  }
+}

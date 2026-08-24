@@ -32,14 +32,14 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen bg-brand-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-xl shadow-md p-8 w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-brand-900 mb-6">เข้าสู่ระบบ Backoffice</h1>
+    <main className="rd-page flex items-center justify-center p-6">
+      <div className="rd-card p-8 w-full max-w-sm">
+        <h1 className="rd-title text-xl mb-6">เข้าสู่ระบบ Backoffice</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Username</label>
+            <label className="rd-label">Username</label>
             <input
-              className="w-full border border-brand-100 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              className="rd-input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -47,25 +47,25 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Password</label>
+            <label className="rd-label">Password</label>
             <input
               type="password"
-              className="w-full border border-brand-100 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-600"
+              className="rd-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-[#d03b3b] text-sm">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-brand-600 text-white py-2 rounded hover:bg-brand-900 transition disabled:opacity-50"
+            className="rd-btn w-full"
           >
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
           </button>
         </form>
-        <a href="/" className="block text-center text-sm text-brand-600 mt-4 hover:underline">
+        <a href="/" className="block text-center rd-link text-sm mt-4">
           ← กลับหน้าเช็คประกันสาธารณะ
         </a>
       </div>

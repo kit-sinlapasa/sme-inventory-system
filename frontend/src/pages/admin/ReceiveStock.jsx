@@ -43,12 +43,12 @@ export default function ReceiveStock() {
 
   return (
     <div className="max-w-md mx-auto">
-      <h1 className="text-lg font-semibold text-brand-900 mb-4">รับสินค้าเข้าสต็อก</h1>
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-3">
+      <h1 className="rd-title mb-4">รับสินค้าเข้าสต็อก</h1>
+      <form onSubmit={handleSubmit} className="rd-card p-6 space-y-3">
         <div>
-          <label className="block text-sm text-gray-600 mb-1">สินค้า</label>
+          <label className="rd-label">สินค้า</label>
           <select
-            className="w-full border border-brand-100 rounded px-3 py-2"
+            className="rd-input"
             value={skuId}
             onChange={(e) => setSkuId(e.target.value)}
             required
@@ -62,9 +62,9 @@ export default function ReceiveStock() {
           </select>
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">สาขาที่รับเข้า</label>
+          <label className="rd-label">สาขาที่รับเข้า</label>
           <select
-            className="w-full border border-brand-100 rounded px-3 py-2"
+            className="rd-input"
             value={branchId}
             onChange={(e) => setBranchId(e.target.value)}
             required
@@ -78,20 +78,20 @@ export default function ReceiveStock() {
           </select>
         </div>
         <div>
-          <label className="block text-sm text-gray-600 mb-1">หมายเลขซีเรียล (S/N)</label>
+          <label className="rd-label">หมายเลขซีเรียล (S/N)</label>
           <input
-            className="w-full border border-brand-100 rounded px-3 py-2"
+            className="rd-input"
             value={serial}
             onChange={(e) => setSerial(e.target.value)}
             required
           />
         </div>
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        {success && <p className="text-green-700 text-sm">{success}</p>}
+        {error && <p className="text-[#d03b3b] text-sm">{error}</p>}
+        {success && <p className="text-[#0a7d0a] text-sm">{success}</p>}
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-brand-600 text-white py-2 rounded hover:bg-brand-900 disabled:opacity-50"
+          className="rd-btn w-full"
         >
           {submitting ? 'กำลังบันทึก...' : 'รับเข้าสต็อก'}
         </button>

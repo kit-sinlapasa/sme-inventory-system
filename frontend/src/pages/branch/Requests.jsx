@@ -10,9 +10,9 @@ function formatDateTime(value) {
 }
 
 const STATUS_COLOR = {
-  Pending: 'bg-yellow-100 text-yellow-800',
-  Approved: 'bg-green-100 text-green-800',
-  Rejected: 'bg-red-100 text-red-800',
+  Pending: 'rd-badge-pending',
+  Approved: 'rd-badge-approved',
+  Rejected: 'rd-badge-rejected',
 }
 
 // FR-009, US-06 — สาขาสร้างคำขอสั่งซื้อ + ดูสถานะคำขอของตัวเอง
@@ -99,12 +99,12 @@ export default function Requests() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-brand-900 mb-4">สร้างคำขอสั่งซื้อ</h1>
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-3">
+        <h1 className="rd-title mb-4">สร้างคำขอสั่งซื้อ</h1>
+        <form onSubmit={handleSubmit} className="rd-card p-6 space-y-3">
           <div>
-            <label className="block text-sm text-gray-600 mb-1">สินค้า</label>
+            <label className="rd-label">สินค้า</label>
             <select
-              className="w-full border border-brand-100 rounded px-3 py-2"
+              className="rd-input"
               value={skuId}
               onChange={(e) => setSkuId(e.target.value)}
               required
@@ -118,21 +118,21 @@ export default function Requests() {
             </select>
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">จำนวน</label>
+            <label className="rd-label">จำนวน</label>
             <input
               type="number"
               min="1"
-              className="w-full border border-brand-100 rounded px-3 py-2"
+              className="rd-input"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               required
             />
           </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-[#d03b3b] text-sm">{error}</p>}
           <button
             type="submit"
             disabled={submitting}
-            className="bg-brand-600 text-white px-4 py-2 rounded hover:bg-brand-900 disabled:opacity-50"
+            className="rd-btn"
           >
             {submitting ? 'กำลังส่ง...' : 'ส่งคำขอ'}
           </button>
@@ -140,9 +140,9 @@ export default function Requests() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-brand-900 mb-4">คำขอของสาขา</h2>
+        <h2 className="rd-title mb-4">คำขอของสาขา</h2>
         {requests.length === 0 ? (
-          <p className="text-gray-500 text-sm">ยังไม่มีคำขอ</p>
+          <p className="text-ink-muted text-sm">ยังไม่มีคำขอ</p>
         ) : (
           <>
             <div className="flex items-center justify-between mb-3">
@@ -151,15 +151,15 @@ export default function Requests() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="ค้นหาสินค้า / สถานะ / เหตุผล / จำนวน..."
-                className="w-full max-w-sm rounded border border-brand-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600/40"
+                className="rd-input max-w-sm"
               />
-              <p className="text-xs text-gray-500 ml-3 whitespace-nowrap">
+              <p className="text-xs text-ink-muted ml-3 whitespace-nowrap">
                 {visibleRequests.length} / {requests.length} รายการ
               </p>
             </div>
-            <div className="bg-white rounded-lg shadow overflow-x-auto">
+            <div className="rd-card overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-brand-100 text-brand-900">
+                <thead className="text-ink-muted">
                   <tr>
                     {Object.entries(SORT_COLUMNS).map(([key, col]) => (
                       <SortableHeader
@@ -176,27 +176,27 @@ export default function Requests() {
                 <tbody>
                   {visibleRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-ink-muted">
                         ไม่พบคำขอที่ตรงกับ "{search}"
                       </td>
                     </tr>
                   ) : (
                     visibleRequests.map((r) => (
-                      <tr key={r.id} className="border-t border-brand-50">
+                      <tr key={r.id} className="rd-tr">
                         <td className="px-4 py-2">{productLabel(r.sku_id)}</td>
                         <td className="px-4 py-2 text-right">{r.quantity}</td>
-                        <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
+                        <td className="px-4 py-2 text-ink-muted whitespace-nowrap">
                           {formatDateTime(r.requested_at)}
                         </td>
                         <td className="px-4 py-2">
-                          <span className={`text-xs px-2 py-1 rounded ${STATUS_COLOR[r.status]}`}>
+                          <span className={`rd-badge ${STATUS_COLOR[r.status]}`}>
                             {STATUS_LABEL[r.status] ?? r.status}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
+                        <td className="px-4 py-2 text-ink-muted whitespace-nowrap">
                           {formatDateTime(r.decided_at)}
                         </td>
-                        <td className="px-4 py-2 text-gray-500">{r.reject_reason ?? '—'}</td>
+                        <td className="px-4 py-2 text-ink-muted">{r.reject_reason ?? '—'}</td>
                       </tr>
                     ))
                   )}

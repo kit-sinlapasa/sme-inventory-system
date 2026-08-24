@@ -56,3 +56,33 @@ def test_suspend_product_is_soft_delete_and_idempotent(client, admin_token, prod
         "/api/products?include_inactive=true", headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert product.id in [p["id"] for p in listing_all.json()]
+
+
+def test_suspended_product_can_be_restored(client, admin_token, product):
+    """เดิมระงับแล้วเอากลับไม่ได้เลย (ProductUpdate ไม่มี is_active) — ต้องกู้คืนได้"""
+    client.delete(f"/api/products/{product.id}", headers={"Authorization": f"Bearer {admin_token}"})
+    check = client.get(f"/api/products/{product.id}", headers={"Authorization": f"Bearer {admin_token}"})
+    assert check.json()["is_active"] is False
+
+    resp = client.post(
+        f"/api/products/{product.id}/restore", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_active"] is True
+
+
+def test_restore_is_idempotent(client, admin_token, product):
+    """กดกู้คืนซ้ำกับสินค้าที่ใช้งานอยู่แล้วต้องไม่ error (เหมือน suspend)"""
+    resp = client.post(
+        f"/api/products/{product.id}/restore", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_active"] is True
+
+
+def test_branch_staff_cannot_restore_product(client, branch_staff_token, product):
+    """NFR-SEC-02 — กู้คืนสินค้าเป็นสิทธิ์ Admin เท่านั้น"""
+    resp = client.post(
+        f"/api/products/{product.id}/restore", headers={"Authorization": f"Bearer {branch_staff_token}"}
+    )
+    assert resp.status_code == 403

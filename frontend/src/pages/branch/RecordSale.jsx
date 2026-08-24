@@ -59,64 +59,64 @@ export default function RecordSale() {
 
   return (
     <div className="max-w-md mx-auto">
-      <h1 className="text-lg font-semibold text-brand-900 mb-4">บันทึกการขาย</h1>
+      <h1 className="rd-title mb-4">บันทึกการขาย</h1>
 
       {!item && (
-        <form onSubmit={handleLookup} className="bg-white rounded-lg shadow p-6 space-y-3">
-          <label className="block text-sm text-gray-600">หมายเลขซีเรียล (S/N)</label>
+        <form onSubmit={handleLookup} className="rd-card p-6 space-y-3">
+          <label className="rd-label">หมายเลขซีเรียล (S/N)</label>
           <input
-            className="w-full border border-brand-100 rounded px-3 py-2"
+            className="rd-input"
             value={serial}
             onChange={(e) => setSerial(e.target.value)}
             required
             autoFocus
           />
-          {lookupError && <p className="text-red-600 text-sm">{lookupError}</p>}
-          <button className="w-full bg-brand-600 text-white py-2 rounded hover:bg-brand-900" type="submit">
+          {lookupError && <p className="text-[#d03b3b] text-sm">{lookupError}</p>}
+          <button className="rd-btn w-full" type="submit">
             ค้นหา
           </button>
         </form>
       )}
 
       {item && (
-        <form onSubmit={handleConfirmSale} className="bg-white rounded-lg shadow p-6 space-y-3">
-          <div className="bg-brand-100 rounded p-3 text-sm">
+        <form onSubmit={handleConfirmSale} className="rd-card p-6 space-y-3">
+          <div className="bg-ink-accentSoft rounded-lg p-3 text-sm">
             <p>
               <span className="font-medium">S/N:</span> {item.serial_number}
             </p>
-            <p className="text-brand-600">พร้อมขาย (In Stock)</p>
+            <p className="text-ink-accent">พร้อมขาย (In Stock)</p>
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">ชื่อผู้ซื้อ</label>
+            <label className="rd-label">ชื่อผู้ซื้อ</label>
             <input
-              className="w-full border border-brand-100 rounded px-3 py-2"
+              className="rd-input"
               value={buyerName}
               onChange={(e) => setBuyerName(e.target.value)}
               required
             />
           </div>
           <div>
-            <label className="block text-sm text-gray-600 mb-1">เบอร์โทรผู้ซื้อ</label>
+            <label className="rd-label">เบอร์โทรผู้ซื้อ</label>
             <input
-              className="w-full border border-brand-100 rounded px-3 py-2"
+              className="rd-input"
               value={buyerPhone}
               onChange={(e) => setBuyerPhone(e.target.value)}
               required
             />
           </div>
-          {saleError && <p className="text-red-600 text-sm">{saleError}</p>}
+          {saleError && <p className="text-[#d03b3b] text-sm">{saleError}</p>}
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setItem(null)}
-              className="flex-1 border border-brand-100 text-brand-900 py-2 rounded"
+              className="rd-btn-secondary flex-1"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-brand-600 text-white py-2 rounded hover:bg-brand-900 disabled:opacity-50"
+              className="rd-btn flex-1"
             >
               {loading ? 'กำลังบันทึก...' : 'ยืนยันการขาย'}
             </button>
@@ -125,8 +125,8 @@ export default function RecordSale() {
       )}
 
       {saleResult && (
-        <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
-          <p className="text-green-700 font-medium">บันทึกการขายสำเร็จ</p>
+        <div className="mt-4 rd-card p-4 text-sm border-[#0a7d0a]/30 bg-[#e8f5e9]">
+          <p className="text-[#0a7d0a] font-medium">บันทึกการขายสำเร็จ</p>
           <p>
             วันหมดประกัน: {new Date(saleResult.warranty_expires_at).toLocaleDateString('th-TH')}
           </p>

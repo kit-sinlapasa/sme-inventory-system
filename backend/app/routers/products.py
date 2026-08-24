@@ -127,6 +127,41 @@ def suspend_product(
     )
 
 
+@router.post("/{product_id}/restore", response_model=ProductOut)
+def restore_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """
+    FR-001 — ยกเลิกการระงับ (กลับมาใช้งานได้)
+
+    เดิมระบบระงับสินค้าได้อย่างเดียว ไม่มีทางเอากลับ — ถ้ากดพลาดก็จบเลย
+    เพราะ `ProductUpdate` ไม่มี field `is_active` ให้แก้ผ่าน PUT ด้วย
+    endpoint นี้ปิดช่องว่างนั้น (idempotent เหมือน suspend)
+    """
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="ไม่พบสินค้า")
+    if product.is_active:
+        return product  # อยู่ในสถานะใช้งานอยู่แล้ว ไม่ต้องทำอะไร
+
+    product.is_active = True
+    db.commit()
+    db.refresh(product)
+
+    write_audit_log(
+        db,
+        actor=current_user,
+        action="RESTORE_PRODUCT",
+        entity_type="Product",
+        entity_id=product.id,
+        before={"is_active": False},
+        after={"is_active": True},
+    )
+    return product
+
+
 @router.post(
     "/{product_id}/images", response_model=ProductImageOut, status_code=status.HTTP_201_CREATED
 )

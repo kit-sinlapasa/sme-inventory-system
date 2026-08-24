@@ -3,9 +3,9 @@ import client from '../../api/client'
 
 const STATUS_LABEL = { Pending: 'รอดำเนินการ', Approved: 'อนุมัติแล้ว', Rejected: 'ปฏิเสธ' }
 const STATUS_COLOR = {
-  Pending: 'bg-yellow-100 text-yellow-800',
-  Approved: 'bg-green-100 text-green-800',
-  Rejected: 'bg-red-100 text-red-800',
+  Pending: 'rd-badge-pending',
+  Approved: 'rd-badge-approved',
+  Rejected: 'rd-badge-rejected',
 }
 
 // คำขอที่ยังไม่ถูกตัดสินใจจะไม่มี decided_at — แสดง "—" แทน Invalid Date
@@ -76,9 +76,9 @@ export default function PurchaseRequests() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-brand-900">คำขอสั่งซื้อ</h1>
+        <h1 className="rd-title">คำขอสั่งซื้อ</h1>
         <select
-          className="border border-brand-100 rounded px-3 py-1.5 text-sm"
+          className="rd-input text-sm w-auto"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         >
@@ -89,36 +89,36 @@ export default function PurchaseRequests() {
         </select>
       </div>
 
-      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
+      {error && <p className="text-[#d03b3b] text-sm mb-4">{error}</p>}
 
       {requests.length === 0 ? (
-        <p className="text-gray-500 text-sm">ไม่มีคำขอในสถานะนี้</p>
+        <p className="text-ink-muted text-sm">ไม่มีคำขอในสถานะนี้</p>
       ) : (
         <div className="space-y-3">
           {requests.map((r) => (
-            <div key={r.id} className="bg-white rounded-lg shadow p-4">
+            <div key={r.id} className="rd-card p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-brand-900">{productLabel(r.sku_id)}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-ink-text">{productLabel(r.sku_id)}</p>
+                  <p className="text-sm text-ink-muted">
                     จำนวน {r.quantity} · {branchLabel(r.branch_id)}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-ink-muted">
                     ขอเมื่อ {formatDateTime(r.requested_at)}
                     {r.decided_at && ` · ตัดสินใจเมื่อ ${formatDateTime(r.decided_at)}`}
                   </p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded ${STATUS_COLOR[r.status]}`}>
+                <span className={`rd-badge ${STATUS_COLOR[r.status]}`}>
                   {STATUS_LABEL[r.status] ?? r.status}
                 </span>
               </div>
 
               {r.status === 'Pending' && (
-                <div className="mt-3 pt-3 border-t border-brand-50">
+                <div className="mt-3 pt-3 rd-tr">
                   {rejectingId === r.id ? (
                     <div className="flex gap-2">
                       <input
-                        className="flex-1 border border-brand-100 rounded px-3 py-1.5 text-sm"
+                        className="rd-input text-sm"
                         placeholder="เหตุผลที่ปฏิเสธ (บังคับกรอก)"
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
@@ -127,7 +127,7 @@ export default function PurchaseRequests() {
                       <button
                         onClick={() => handleReject(r.id)}
                         disabled={!rejectReason.trim()}
-                        className="bg-red-600 text-white px-3 py-1.5 rounded text-sm disabled:opacity-50"
+                        className="rd-btn-danger disabled:opacity-50"
                       >
                         ยืนยันปฏิเสธ
                       </button>
@@ -136,7 +136,7 @@ export default function PurchaseRequests() {
                           setRejectingId(null)
                           setRejectReason('')
                         }}
-                        className="text-gray-500 text-sm px-2"
+                        className="text-ink-muted text-sm px-2"
                       >
                         ยกเลิก
                       </button>
@@ -145,13 +145,13 @@ export default function PurchaseRequests() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleApprove(r.id)}
-                        className="bg-brand-600 text-white px-3 py-1.5 rounded text-sm hover:bg-brand-900"
+                        className="rd-btn"
                       >
                         อนุมัติ
                       </button>
                       <button
                         onClick={() => setRejectingId(r.id)}
-                        className="border border-red-200 text-red-600 px-3 py-1.5 rounded text-sm hover:bg-red-50"
+                        className="rd-btn-danger"
                       >
                         ปฏิเสธ
                       </button>
@@ -160,7 +160,7 @@ export default function PurchaseRequests() {
                 </div>
               )}
               {r.status === 'Rejected' && r.reject_reason && (
-                <p className="mt-2 text-sm text-red-600">เหตุผล: {r.reject_reason}</p>
+                <p className="mt-2 text-sm text-[#d03b3b]">เหตุผล: {r.reject_reason}</p>
               )}
             </div>
           ))}

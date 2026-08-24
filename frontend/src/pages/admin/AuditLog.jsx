@@ -23,9 +23,9 @@ export default function AuditLog() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-brand-900">Audit Log</h1>
+        <h1 className="rd-title">Audit Log</h1>
         <select
-          className="border border-brand-100 rounded px-3 py-1.5 text-sm"
+          className="rd-input text-sm w-auto"
           value={entityType}
           onChange={(e) => setEntityType(e.target.value)}
         >
@@ -39,13 +39,13 @@ export default function AuditLog() {
       </div>
 
       {loading ? (
-        <p className="text-gray-500">กำลังโหลด...</p>
+        <p className="text-ink-muted">กำลังโหลด...</p>
       ) : logs.length === 0 ? (
-        <p className="text-gray-500 text-sm">ไม่มีข้อมูล</p>
+        <p className="text-ink-muted text-sm">ไม่มีข้อมูล</p>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <div className="rd-card overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-brand-100 text-brand-900">
+            <thead className="text-ink-muted">
               <tr>
                 <th className="text-left px-4 py-2">เวลา</th>
                 <th className="text-left px-4 py-2">Action</th>
@@ -56,8 +56,8 @@ export default function AuditLog() {
             </thead>
             <tbody>
               {logs.map((log) => (
-                <tr key={log.id} className="border-t border-brand-50">
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-500">
+                <tr key={log.id} className="rd-tr">
+                  <td className="px-4 py-2 whitespace-nowrap text-ink-muted">
                     {new Date(log.occurred_at).toLocaleString('th-TH')}
                   </td>
                   <td className="px-4 py-2 font-medium">{log.action}</td>
@@ -65,7 +65,7 @@ export default function AuditLog() {
                     {log.entity_type} #{log.entity_id}
                   </td>
                   <td className="px-4 py-2">User #{log.actor_user_id}</td>
-                  <td className="px-4 py-2 text-xs text-gray-500 max-w-xs truncate" title={JSON.stringify(log.after_value)}>
+                  <td className="px-4 py-2 text-xs text-ink-muted max-w-xs truncate" title={JSON.stringify(log.after_value)}>
                     {JSON.stringify(log.after_value)}
                   </td>
                 </tr>
