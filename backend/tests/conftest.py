@@ -77,12 +77,20 @@ def branch(db):
 
 
 @pytest.fixture()
-def branch_staff_user(db, branch):
+def other_branch(db):
+    b = Branch(name="สาขาอื่น", address="456 ถนนอื่น")
+    db.add(b)
+    db.commit()
+    db.refresh(b)
+    return b
+
+
+def _make_user(db, username, role, branch_id=None):
     user = User(
-        username="branch_staff_test",
+        username=username,
         password_hash=pwd_context.hash("testpassword123"),
-        role="BranchStaff",
-        branch_id=branch.id,
+        role=role,
+        branch_id=branch_id,
     )
     db.add(user)
     db.commit()
@@ -90,14 +98,30 @@ def branch_staff_user(db, branch):
     return user
 
 
-@pytest.fixture()
-def branch_staff_token(client, branch_staff_user):
-    resp = client.post(
-        "/api/auth/login",
-        json={"username": "branch_staff_test", "password": "testpassword123"},
-    )
+def _login(client, username):
+    resp = client.post("/api/auth/login", json={"username": username, "password": "testpassword123"})
     assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]
+
+
+@pytest.fixture()
+def branch_staff_user(db, branch):
+    return _make_user(db, "branch_staff_test", "BranchStaff", branch_id=branch.id)
+
+
+@pytest.fixture()
+def branch_staff_token(client, branch_staff_user):
+    return _login(client, "branch_staff_test")
+
+
+@pytest.fixture()
+def admin_user(db):
+    return _make_user(db, "admin_test", "Admin", branch_id=None)
+
+
+@pytest.fixture()
+def admin_token(client, admin_user):
+    return _login(client, "admin_test")
 
 
 @pytest.fixture()

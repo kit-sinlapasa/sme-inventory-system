@@ -3,7 +3,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.limiter import limiter
-from app.routers import auth, public, sales
+from app.routers import auth, branch_sku, items, products, public, sales, stock
 
 app = FastAPI(
     title="SME Inventory & Order Management API",
@@ -20,11 +20,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(auth.router)
 app.include_router(sales.router)
 app.include_router(public.router)
+app.include_router(products.router)
+app.include_router(items.router)
+app.include_router(stock.router)
+app.include_router(branch_sku.router)
 
-# TODO สัปดาห์ 2-3: เพิ่ม router สำหรับ products, items, stock, branch_sku,
-# purchase_requests, audit_log, alerts — ดู endpoint list เต็มใน
-# docs/03-Architecture-Design.md ส่วนที่ 5 (REST API Specification)
-# ทำตามรูปแบบเดียวกับ routers/sales.py และ routers/public.py
+# TODO สัปดาห์ 3+: เพิ่ม router สำหรับ purchase_requests, audit_log, alerts
+# ดู endpoint list เต็มใน docs/03-Architecture-Design.md ส่วนที่ 5
 
 
 @app.get("/health")

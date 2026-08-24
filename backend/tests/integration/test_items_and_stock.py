@@ -1,0 +1,57 @@
+"""FR-002 (รับเข้าสต็อก) + FR-003 (ดูสต็อกเรียลไทม์) + NFR-SEC-02 (แยกตามสาขา)"""
+
+
+def test_admin_can_receive_item(client, admin_token, product, branch):
+    resp = client.post(
+        "/api/items",
+        json={"sku_id": product.id, "serial_number": "SN-NEW-0001", "branch_id": branch.id},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "InStock"
+
+
+def test_duplicate_serial_number_rejected(client, admin_token, product, branch, in_stock_item):
+    """FR-002 — S/N ต้องไม่ซ้ำกันทั้งระบบ"""
+    resp = client.post(
+        "/api/items",
+        json={"sku_id": product.id, "serial_number": in_stock_item.serial_number, "branch_id": branch.id},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 409
+
+
+def test_stock_count_reflects_received_items(client, admin_token, product, branch, in_stock_item):
+    """FR-003 — ยอดคงเหลือต้องนับจาก Item ที่ status=InStock จริง ไม่ใช่ตัวเลข cache"""
+    resp = client.get("/api/stock", headers={"Authorization": f"Bearer {admin_token}"})
+    assert resp.status_code == 200
+    rows = resp.json()
+    assert len(rows) == 1
+    assert rows[0]["sku_id"] == product.id
+    assert rows[0]["branch_id"] == branch.id
+    assert rows[0]["on_hand"] == 1
+
+
+def test_branch_staff_only_sees_own_branch_stock(
+    client, branch_staff_token, product, branch, other_branch, db
+):
+    """NFR-SEC-02 ทางอ้อม — Branch ต้องไม่เห็นสต็อกของสาขาอื่น แม้จะพยายามส่ง branch_id ของสาขาอื่นมาเอง"""
+    from app.models.item import Item
+
+    own_item = Item(sku_id=product.id, serial_number="SN-OWN-0001", branch_id=branch.id, status="InStock")
+    other_item = Item(
+        sku_id=product.id, serial_number="SN-OTHERBRANCH-0001", branch_id=other_branch.id, status="InStock"
+    )
+    db.add_all([own_item, other_item])
+    db.commit()
+
+    # พยายามขอดูสต็อกสาขาอื่นตรง ๆ — server ต้องเมิน parameter นี้และคืนของสาขาตัวเองเท่านั้น
+    resp = client.get(
+        f"/api/stock?branch_id={other_branch.id}",
+        headers={"Authorization": f"Bearer {branch_staff_token}"},
+    )
+    assert resp.status_code == 200
+    rows = resp.json()
+    assert all(r["branch_id"] == branch.id for r in rows)
+    assert len(rows) == 1
+    assert rows[0]["on_hand"] == 1  # เห็นแค่ของสาขาตัวเอง ไม่ใช่ 2

@@ -47,11 +47,17 @@ npm run dev
 | Architecture & Design | ✅ v1.0 (ADR-001~003) |
 | Repo Skeleton | ✅ (เอกสารนี้) |
 | Auth (FR-007) | ✅ ใช้งานได้ |
-| บันทึกการขาย + concurrency (FR-004/005, NFR-REL-01) | ✅ ใช้งานได้ + **รันจริงแล้ว: 7/7 test ผ่าน รวม concurrency test 10 thread แข่งกัน** |
+| Product CRUD + suspend (FR-001) | ✅ ใช้งานได้ + test |
+| รับสินค้าเข้าสต็อกรายชิ้น (FR-002) | ✅ ใช้งานได้ + test |
+| ดูสต็อกเรียลไทม์ แยกตามสาขา (FR-003) | ✅ ใช้งานได้ + test |
+| บันทึกการขาย + concurrency (FR-004/005, NFR-REL-01) | ✅ ใช้งานได้ + **รันจริงแล้ว: concurrency test 10 thread แข่งกัน ผ่าน** |
 | เช็คประกันสาธารณะ (FR-006) | ✅ ใช้งานได้ (backend+frontend) |
-| ส่วนที่เหลือ (products, items, stock, PR/PO, audit log, alerts) | 🔲 TODO สัปดาห์ 2-3 — ดู endpoint list เต็มใน `docs/03-Architecture-Design.md` ส่วนที่ 5 |
+| Reorder point ต่อสาขา (FR-012) | 🟡 ตั้งค่า+แสดงผลทำแล้ว ยังไม่มีกลไกแจ้งเตือน |
+| Audit log (FR-011) | 🟡 บันทึกอัตโนมัติทุก mutation แล้ว ยังไม่มี endpoint ให้ค้นดู |
+| PR→PO flow (FR-009/010), alerts, หน้า Branch/Admin UI | 🔲 TODO สัปดาห์ 3+ — ดู endpoint list เต็มใน `docs/03-Architecture-Design.md` ส่วนที่ 5 |
+| Deploy จริง (Render) | 🔲 เขียน `render.yaml` ไว้แล้ว รอทีมสมัครบัญชี Render |
 
-> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` ครบ 7 เคสจริง พบและแก้บัค 2 จุดระหว่างทดสอบ (ดู `docs/02-AI-Usage-Log.md` entry #9) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
+> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 20 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
 
 ## โครงสร้างโปรเจกต์
 ดูเหตุผลของโครงสร้างนี้ใน ADR-003 (`docs/03-Architecture-Design.md`)

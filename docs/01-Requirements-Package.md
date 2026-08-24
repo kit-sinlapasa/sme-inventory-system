@@ -156,25 +156,25 @@
 
 | Req ID | Source (P#) | User Story | Design | Test Case | Status |
 |---|---|---|---|---|---|
-| FR-001 | P3, P11 | US-02 | ER: `PRODUCT` · API: `POST/PUT /api/products` | — | 🏗️ Design Complete |
-| FR-002 | P2, P3 | US-03 | ER: `ITEM` · API: `POST /api/items` | — | 🏗️ Design Complete |
-| FR-003 | P2, P8 | US-05 | API: `GET /api/stock` | — | 🏗️ Design Complete |
-| FR-004 | P1 | US-04 | ER: `SALE` · API: `POST /api/sales` · ADR-002 | — | 🏗️ Design Complete |
-| FR-005 | P2 | US-01, US-04 | ER: `SALE.warranty_expires_at` (computed field) | — | 🏗️ Design Complete |
-| FR-006 | P7 | US-01 | API: `GET /api/public/warranty/{serial}` | — | 🏗️ Design Complete |
-| FR-007 | โน้ตเดิม FR#2 | — (cross-cutting) | API: `POST /api/auth/login` | — | 🏗️ Design Complete |
-| FR-008 | P8 | US-05 | API: `GET /api/products`, `GET /api/stock` (role=Branch) | — | 🏗️ Design Complete |
-| FR-009 | P8 | US-06 | ER: `PURCHASE_REQUEST` · API: `POST /api/purchase-requests` | — | 🏗️ Design Complete |
-| FR-010 | P8 | US-07 | ER: `PURCHASE_ORDER` · API: `POST .../approve`, `.../reject` | — | 🏗️ Design Complete |
-| FR-011 | P1 | — (cross-cutting) | ER: `AUDIT_LOG` | — | 🏗️ Design Complete |
-| FR-012 | โน้ตหน้า 2 | US-08 | ER: `BRANCH_SKU.reorder_point` · API: `GET /api/alerts/low-stock` | — | 🏗️ Design Complete |
-| NFR-PERF-01 | — | US-01 | Quality Attribute Scenario #2 | — | 🏗️ Design Complete |
-| NFR-SEC-01 | — | US-01 | API response schema (ไม่มี field buyer) · STRIDE-I | — | 🏗️ Design Complete |
-| NFR-SEC-02 | P8 | US-05 | Middleware role-check ทุก endpoint · STRIDE-T | — | 🏗️ Design Complete |
-| NFR-REL-01 | ความท้าทายโครงการ | US-04 | ADR-002 · Quality Attribute Scenario #1 | — | 🏗️ Design Complete |
-| NFR-USE-01 | P4, P10 | — (cross-cutting) | User Flow (3 persona) | — | 🏗️ Design Complete |
-| NFR-MAINT-01 | — | — (cross-cutting) | API: `GET /api/audit-log` (indexed) | — | 🏗️ Design Complete |
-| NFR-PRIV-01 | CR-001 | US-04 | API: `POST /api/admin/purge-old-buyer-data` | — | 🏗️ Design Complete |
+| FR-001 | P3, P11 | US-02 | ER: `PRODUCT` · API: `POST/PUT/DELETE /api/products` | `test_products.py` (5 tests) | ✅ Implemented + Tested |
+| FR-002 | P2, P3 | US-03 | ER: `ITEM` · API: `POST /api/items` | `test_items_and_stock.py` (2 tests) | ✅ Implemented + Tested |
+| FR-003 | P2, P8 | US-05 | API: `GET /api/stock` | `test_items_and_stock.py` (2 tests) | ✅ Implemented + Tested |
+| FR-004 | P1 | US-04 | ER: `SALE` · API: `POST /api/sales` · ADR-002 | `test_sale_race_condition.py` (4 tests) | ✅ Implemented + Tested |
+| FR-005 | P2 | US-01, US-04 | ER: `SALE.warranty_expires_at` (computed field) | `test_public_warranty.py` | ✅ Implemented + Tested |
+| FR-006 | P7 | US-01 | API: `GET /api/public/warranty/{serial}` | `test_public_warranty.py` (3 tests) | ✅ Implemented + Tested |
+| FR-007 | โน้ตเดิม FR#2 | — (cross-cutting) | API: `POST /api/auth/login` | ครอบคลุมทางอ้อมทุก test ที่ login | ✅ Implemented + Tested |
+| FR-008 | P8 | US-05 | API: `GET /api/products`, `GET /api/stock` (role=Branch) | `test_items_and_stock.py::test_branch_staff_only_sees_own_branch_stock` | ✅ Implemented + Tested |
+| FR-009 | P8 | US-06 | ER: `PURCHASE_REQUEST` · API: `POST /api/purchase-requests` | — | 🏗️ Design Complete (สัปดาห์ 3+) |
+| FR-010 | P8 | US-07 | ER: `PURCHASE_ORDER` · API: `POST .../approve`, `.../reject` | — | 🏗️ Design Complete (สัปดาห์ 3+) |
+| FR-011 | P1 | — (cross-cutting) | ER: `AUDIT_LOG` + `services/audit.py` เรียกจากทุก mutating endpoint | ยังไม่มี test เฉพาะ | 🟡 เขียน log ทำงานแล้ว **แต่ยังไม่มี `GET /api/audit-log` ให้ค้นดู** |
+| FR-012 | โน้ตหน้า 2 | US-08 | ER: `BRANCH_SKU.reorder_point` · API: `GET/PUT /api/branch-sku/{branch_id}/{sku_id}` | `test_branch_sku.py` (4 tests) | 🟡 ตั้งค่า+แสดงผลทำแล้ว **แต่ยังไม่มีกลไกแจ้งเตือน (alert) จริง** |
+| NFR-PERF-01 | — | US-01 | Quality Attribute Scenario #2 | ยังไม่ทำ load test | 🏗️ Design Complete (สัปดาห์ 7) |
+| NFR-SEC-01 | — | US-01 | API response schema (ไม่มี field buyer) · STRIDE-I | `test_public_warranty.py::test_warranty_check_valid_serial_returns_status_without_buyer_info` | ✅ Implemented + Tested |
+| NFR-SEC-02 | P8 | US-05 | Middleware role-check ทุก endpoint · STRIDE-T | 4 test ยืนยัน 403 (products, branch_sku, sales, stock) | ✅ Implemented + Tested |
+| NFR-REL-01 | ความท้าทายโครงการ | US-04 | ADR-002 · Quality Attribute Scenario #1 | `test_sale_race_condition.py::test_only_one_concurrent_sale_succeeds` (10 concurrent thread) | ✅ Implemented + Tested |
+| NFR-USE-01 | P4, P10 | — (cross-cutting) | User Flow (3 persona) + Tailwind brand colors | ยังไม่มี usability test | 🟡 UI พื้นฐานทำแล้ว (หน้าเช็คประกัน) ส่วนที่เหลือรอสัปดาห์ 3+ |
+| NFR-MAINT-01 | — | — (cross-cutting) | index บน `audit_logs.occurred_at`/`entity_id` มีแล้วใน DB แต่ยังไม่มี endpoint ให้ query | — | 🏗️ Design Complete |
+| NFR-PRIV-01 | CR-001 | US-04 | ยังไม่ implement `POST /api/admin/purge-old-buyer-data` | — | 🏗️ Design Complete (สัปดาห์ 7 ตามแผน) |
 
 **⚠️ Orphan check:** ทุก FR/NFR มี Source และเกือบทุกข้อมี User Story เชื่อม ยกเว้น FR-007, FR-011, NFR-USE-01, NFR-MAINT-01 ที่เป็น cross-cutting requirement (ไม่ผูกกับ story เดียว แต่ครอบทั้งระบบ) — เป็นเรื่องปกติตาม Deck 02 สไลด์ 64 (NFR และ cross-cutting constraints ต้องบริหารแยกจาก backlog ปกติ)
 

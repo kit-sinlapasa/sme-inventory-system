@@ -1,0 +1,47 @@
+# Render Blueprint — deploy backend + Postgres + frontend ทั้งหมดในครั้งเดียว
+# วิธีใช้: สมัคร render.com (ฟรี, login ด้วย GitHub ได้) → New → Blueprint →
+# เลือก repo นี้ → Render จะอ่านไฟล์นี้และสร้างทั้ง 3 service ให้อัตโนมัติ
+
+databases:
+  - name: sme-inventory-db
+    plan: free
+    databaseName: sme_inventory
+    user: sme_inventory_user
+
+services:
+  - type: web
+    name: sme-inventory-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sme-inventory-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true # Render สุ่มค่าให้เอง ไม่ต้องใส่เอง — ไม่มี secret hardcode
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "60"
+      - key: DATA_RETENTION_YEARS
+        value: "3"
+
+  - type: web
+    name: sme-inventory-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: dist
+    envVars:
+      # ต้องแก้เป็น URL จริงของ sme-inventory-api หลัง deploy backend สำเร็จครั้งแรก
+      # (Render กำหนด URL ให้หลัง service สร้างเสร็จ ไม่รู้ล่วงหน้า)
+      - key: VITE_API_URL
+        value: https://sme-inventory-api.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html # React Router client-side routing ต้องมีอันนี้
