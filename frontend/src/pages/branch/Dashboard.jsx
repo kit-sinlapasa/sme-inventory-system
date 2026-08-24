@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import client from '../../api/client'
 import ProductDetailModal from '../../components/ProductDetailModal'
+import SortableHeader, { compareValues } from '../../components/SortableHeader'
 
 // FR-003, FR-008 — ดูสต็อกเรียลไทม์ของสาขาตัวเอง (server บังคับ scope ให้แล้ว)
 // FR-014 (CR-008) — KPI card สรุปภาพรวมของสาขาตัวเอง เสริมของหน้าเดิม
@@ -86,12 +87,9 @@ export default function BranchDashboard() {
       if (!q) return true
       return r.category.toLowerCase().includes(q) || r.brand.toLowerCase().includes(q) || r.model.toLowerCase().includes(q)
     })
-    .sort((a, b) => {
-      const va = SORT_COLUMNS[sortKey].getValue(a)
-      const vb = SORT_COLUMNS[sortKey].getValue(b)
-      const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb
-      return sortDir === 'asc' ? cmp : -cmp
-    })
+    .sort((a, b) =>
+      compareValues(SORT_COLUMNS[sortKey].getValue(a), SORT_COLUMNS[sortKey].getValue(b), sortDir),
+    )
 
   function toggleSort(key) {
     if (key === sortKey) {
@@ -207,24 +205,6 @@ export default function BranchDashboard() {
         <ProductDetailModal skuId={detailSkuId} onClose={() => setDetailSkuId(null)} />
       )}
     </div>
-  )
-}
-
-function SortableHeader({ label, active, dir, align, onClick }) {
-  return (
-    <th
-      onClick={onClick}
-      className={`px-4 py-3 font-medium cursor-pointer select-none hover:text-ink-text ${
-        align === 'right' ? 'text-right' : 'text-left'
-      }`}
-    >
-      <span className={align === 'right' ? 'inline-flex flex-row-reverse items-center gap-1' : 'inline-flex items-center gap-1'}>
-        {label}
-        <span className={`text-[10px] ${active ? 'text-ink-accent' : 'text-ink-border'}`}>
-          {active ? (dir === 'asc' ? '▲' : '▼') : '▲'}
-        </span>
-      </span>
-    </th>
   )
 }
 

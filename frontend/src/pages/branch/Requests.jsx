@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import client from '../../api/client'
+import SortableHeader, { compareValues } from '../../components/SortableHeader'
 
 const STATUS_LABEL = { Pending: 'รอดำเนินการ', Approved: 'อนุมัติแล้ว', Rejected: 'ปฏิเสธ' }
 
@@ -22,6 +23,9 @@ export default function Requests() {
   const [quantity, setQuantity] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('requested_at')
+  const [sortDir, setSortDir] = useState('desc') // ค่าเริ่มต้น: คำขอล่าสุดอยู่บนสุด
 
   async function loadAll() {
     const [productsRes, requestsRes] = await Promise.all([client.get('/products'), client.get('/purchase-requests')])
@@ -54,8 +58,46 @@ export default function Requests() {
     return p ? `${p.category} — ${p.brand} ${p.model}` : `SKU #${sku_id}`
   }
 
+  // ค่าที่ใช้เรียง — ดึงจากคอลัมน์ที่ผู้ใช้เห็นจริง (สินค้าเรียงตามชื่อที่แสดง ไม่ใช่ sku_id
+  // ที่ผู้ใช้ไม่เห็น, สถานะเรียงตามภาษาไทยที่แสดงจริง)
+  const SORT_COLUMNS = {
+    product: { label: 'สินค้า', getValue: (r) => productLabel(r.sku_id) },
+    quantity: { label: 'จำนวน', getValue: (r) => r.quantity, align: 'right' },
+    requested_at: { label: 'วันที่ขอ', getValue: (r) => new Date(r.requested_at).getTime() },
+    status: { label: 'สถานะ', getValue: (r) => STATUS_LABEL[r.status] ?? r.status },
+    decided_at: {
+      label: 'วันที่ตัดสินใจ',
+      getValue: (r) => (r.decided_at ? new Date(r.decided_at).getTime() : null),
+    },
+    reject_reason: { label: 'เหตุผล (ถ้าปฏิเสธ)', getValue: (r) => r.reject_reason },
+  }
+
+  const q = search.trim().toLowerCase()
+  const visibleRequests = requests
+    .filter((r) => {
+      if (!q) return true
+      return (
+        productLabel(r.sku_id).toLowerCase().includes(q) ||
+        (STATUS_LABEL[r.status] ?? r.status).toLowerCase().includes(q) ||
+        (r.reject_reason ?? '').toLowerCase().includes(q) ||
+        String(r.quantity).includes(q)
+      )
+    })
+    .sort((a, b) =>
+      compareValues(SORT_COLUMNS[sortKey].getValue(a), SORT_COLUMNS[sortKey].getValue(b), sortDir),
+    )
+
+  function toggleSort(key) {
+    if (key === sortKey) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-lg font-semibold text-brand-900 mb-4">สร้างคำขอสั่งซื้อ</h1>
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-3">
@@ -102,36 +144,66 @@ export default function Requests() {
         {requests.length === 0 ? (
           <p className="text-gray-500 text-sm">ยังไม่มีคำขอ</p>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-brand-100 text-brand-900">
-                <tr>
-                  <th className="text-left px-4 py-2">สินค้า</th>
-                  <th className="text-right px-4 py-2">จำนวน</th>
-                  <th className="text-left px-4 py-2">วันที่ขอ</th>
-                  <th className="text-left px-4 py-2">สถานะ</th>
-                  <th className="text-left px-4 py-2">วันที่ตัดสินใจ</th>
-                  <th className="text-left px-4 py-2">เหตุผล (ถ้าปฏิเสธ)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((r) => (
-                  <tr key={r.id} className="border-t border-brand-50">
-                    <td className="px-4 py-2">{productLabel(r.sku_id)}</td>
-                    <td className="px-4 py-2 text-right">{r.quantity}</td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(r.requested_at)}</td>
-                    <td className="px-4 py-2">
-                      <span className={`text-xs px-2 py-1 rounded ${STATUS_COLOR[r.status]}`}>
-                        {STATUS_LABEL[r.status] ?? r.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(r.decided_at)}</td>
-                    <td className="px-4 py-2 text-gray-500">{r.reject_reason ?? '—'}</td>
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ค้นหาสินค้า / สถานะ / เหตุผล / จำนวน..."
+                className="w-full max-w-sm rounded border border-brand-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600/40"
+              />
+              <p className="text-xs text-gray-500 ml-3 whitespace-nowrap">
+                {visibleRequests.length} / {requests.length} รายการ
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-brand-100 text-brand-900">
+                  <tr>
+                    {Object.entries(SORT_COLUMNS).map(([key, col]) => (
+                      <SortableHeader
+                        key={key}
+                        label={col.label}
+                        active={sortKey === key}
+                        dir={sortDir}
+                        align={col.align}
+                        onClick={() => toggleSort(key)}
+                      />
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {visibleRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                        ไม่พบคำขอที่ตรงกับ "{search}"
+                      </td>
+                    </tr>
+                  ) : (
+                    visibleRequests.map((r) => (
+                      <tr key={r.id} className="border-t border-brand-50">
+                        <td className="px-4 py-2">{productLabel(r.sku_id)}</td>
+                        <td className="px-4 py-2 text-right">{r.quantity}</td>
+                        <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
+                          {formatDateTime(r.requested_at)}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span className={`text-xs px-2 py-1 rounded ${STATUS_COLOR[r.status]}`}>
+                            {STATUS_LABEL[r.status] ?? r.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-gray-500 whitespace-nowrap">
+                          {formatDateTime(r.decided_at)}
+                        </td>
+                        <td className="px-4 py-2 text-gray-500">{r.reject_reason ?? '—'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
