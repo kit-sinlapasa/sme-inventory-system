@@ -42,11 +42,17 @@ CR-001/CR-002 (data retention, reorder point ต่อสาขา) และ CR
 **2.5 เกือบทำ tooling environment ของตัวเองพังระหว่าง hardening**
 ระหว่างอัปเกรด dependency สำหรับแก้ CVE ระบุ Python environment ผิด ติดตั้ง package ของโปรเจกต์ทับลงใน environment ที่เครื่องมือ (Claude Code) ใช้งานอยู่จริง ทำให้ downgrade package ที่ระบบอื่นต้องพึ่งพา — จับได้จาก error message ของ pip เองและแก้ก่อนเกิดความเสียหายถาวร บทเรียนสำคัญ: **โปรเจกต์นี้ไม่เคยมี isolated venv ของตัวเองเลยตลอดทั้งโครงงานจนถึงจุดนี้** ทั้งที่ README แนะนำให้สร้างไว้ตั้งแต่ต้น
 
-**2.6 ใช้ Git branch/PR workflow ช้าเกินไป — 38 จาก 42 commit push ตรงเข้า `main`**
+**2.6 ใช้ Git branch/PR workflow ช้าเกินไป — 38 commit แรกไม่ผ่าน branch เลย**
 
-ตัวเลขจริง ณ วันที่เขียน: **42 commit · 38 commit แรก push ตรงเข้า `main`** ไม่ผ่าน branch เลย ·
-เพิ่งเปลี่ยนมาใช้ feature branch + Pull Request ตั้งแต่ commit ที่ 39 เป็นต้นไป ได้ **PR 2 ใบ**
-([#1](https://github.com/kit-sinlapasa/sme-inventory-system/pull/1) usability test, [#2](https://github.com/kit-sinlapasa/sme-inventory-system/pull/2) แก้ N+1) และ **merge commit 2 ใบ** ที่อ้างอิงกลับไปหา PR ได้
+ตัวเลขจริง: **38 commit แรก push ตรงเข้า `main`** ไม่ผ่าน branch เลย ·
+เปลี่ยนมาใช้ feature branch + Pull Request ตั้งแต่ **commit ที่ 39 เป็นต้นไป และทุก commit หลังจากนั้นผ่าน PR ทั้งหมด**
+เริ่มจาก [#1](https://github.com/kit-sinlapasa/sme-inventory-system/pull/1) (usability test) และ [#2](https://github.com/kit-sinlapasa/sme-inventory-system/pull/2) (แก้ N+1)
+โดยแต่ละใบทิ้ง merge commit ที่อ้างอิงกลับไปหา PR ได้จาก `git log`
+
+> เขียนเป็น "38 commit แรก" ไม่ใช่ "38 จาก 42" โดยตั้งใจ — ยอดรวมและจำนวน PR
+> ขยับทุกครั้งที่ commit เพิ่ม (เอกสารฉบับก่อนหน้าเขียน "42 commit · PR 2 ใบ"
+> แล้วผิดทันทีที่ตัวมันเองถูก merge เข้าไป) ส่วนจุดที่เปลี่ยนวิธีทำงานเป็นตัวเลขที่ไม่มีวันเปลี่ยน
+> ตัวเลขล่าสุดดูได้จาก `git rev-list --count HEAD` และหน้า Pull requests บน GitHub
 
 ขัดกับแผนสัปดาห์ 2 ที่เขียนไว้เองว่าจะ "ตั้ง branching strategy" และขัดกับเกณฑ์
 **Code & Collaboration (15 คะแนน)** ที่ต้องการ "Git/Issue/Branch/PR/Review ใช้จริง"
@@ -56,10 +62,10 @@ CR-001/CR-002 (data retention, reorder point ต่อสาขา) และ CR
 ไม่ได้มีไว้เพื่อ "รอคนอื่น" อย่างเดียว มันคือจุดที่บังคับให้หยุดสรุปว่าการเปลี่ยนแปลงนี้คืออะไร
 และตรวจสอบมันยังไง ก่อนที่มันจะเข้าไปปนกับของเดิม
 
-**ข้อจำกัดที่ต้องพูดให้ชัด — PR 2 ใบนี้ยังไม่ใช่ "code review"**
+**ข้อจำกัดที่ต้องพูดให้ชัด — PR เหล่านี้ยังไม่ใช่ "code review"**
 
-ตรวจแล้วว่าทั้งสองใบมี **reviews = 0** ผู้เขียนกับผู้ merge เป็นคนเดียวกัน
-สิ่งที่ได้จริงจาก 2 ใบนี้คือ **branch hygiene + CI gate + บันทึกเหตุผลของการเปลี่ยนแปลง**
+ตรวจแล้วว่า **ทุกใบมี reviews = 0** ผู้เขียนกับผู้ merge เป็นคนเดียวกัน
+สิ่งที่ได้จริงคือ **branch hygiene + CI gate + บันทึกเหตุผลของการเปลี่ยนแปลง**
 ไม่ใช่การมีสายตาที่สองมาตรวจ · การนับว่า "มี PR แล้ว = ผ่านเกณฑ์ Review" จะเป็นการอ้างเกินจริง
 จึงบันทึกไว้ตรงนี้ว่าส่วน **Review ของเกณฑ์นี้ยังไม่ถูกเติมเต็ม**
 
@@ -85,8 +91,8 @@ AI มองข้ามงานตัวเองได้จริง (ดู
 
 | รายการ | สถานะปัจจุบัน | ผลกระทบถ้าไม่แก้ |
 |---|---|---|
-| Git branch/PR workflow | เริ่มใช้แล้วแต่ช้า — 38/42 commit push ตรง `main`, มี PR 2 ใบช่วงท้าย | หลักฐาน branch/PR มีจริงแต่ครอบคลุมแค่ช่วงท้ายโครงงาน ไม่ใช่ทั้งเส้นทาง |
-| **Code review (คนที่ 2)** | **ยังไม่มีเลย** — PR ทั้ง 2 ใบ reviews = 0 ผู้เขียนกับผู้ merge เป็นคนเดียวกัน | ส่วน "Review" ของเกณฑ์ Code & Collaboration ยังไม่ถูกเติมเต็ม · AI นับไม่ได้เพราะเป็นผู้เขียนโค้ดเอง |
+| Git branch/PR workflow | เริ่มใช้แล้วแต่ช้า — 38 commit แรก push ตรง `main` ก่อนเปลี่ยนมาใช้ PR | หลักฐาน branch/PR มีจริงแต่ครอบคลุมแค่ช่วงท้ายโครงงาน ไม่ใช่ทั้งเส้นทาง |
+| **Code review (คนที่ 2)** | **ยังไม่มีเลย** — PR ทุกใบ reviews = 0 ผู้เขียนกับผู้ merge เป็นคนเดียวกัน | ส่วน "Review" ของเกณฑ์ Code & Collaboration ยังไม่ถูกเติมเต็ม · AI นับไม่ได้เพราะเป็นผู้เขียนโค้ดเอง |
 | NFR-USE-01 (Usability Test) | เตรียมครบแล้ว — เดิน task จริง + heuristic evaluation + สคริปต์พร้อมรัน ([06](06-Usability-Test-NFR-USE-01.md)) แต่ **ยังไม่ได้รันกับผู้ใช้จริง** | ตัวเลข "≥90% ภายใน 60 วินาที" ยังไม่มีหลักฐาน — ต้องมีผู้ใช้จริง 5-8 คน AI สร้างแทนไม่ได้ |
 | NFR-MAINT-01 (ค้นหา audit log ภายใน 3 วิ) | Endpoint ใช้งานได้จริงและมี index แล้ว แต่ไม่มี load test วัดเวลาที่ scale ใหญ่ | อ้างว่า "ผ่านสเปก 3 วินาที" ไม่ได้เต็มปาก |
 | Email alert บน production | โค้ดพร้อมแล้ว แต่ `ALERT_EMAIL`/`SMTP_HOST` บน Render ยังว่าง (`sync: false`) | Production ยังอยู่ใน dev-mode (log อย่างเดียว ไม่ส่งอีเมลจริง) จนกว่าทีมจะตั้งค่าเอง |

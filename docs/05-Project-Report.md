@@ -179,16 +179,16 @@ frontend/src/
 
 ### Issues / Branches / PR / Code Reviews
 
-⚠️ **บันทึกตรงไปตรงมา:** ตัวเลขจริง — **42 commit · 38 commit แรก push ตรงเข้า `main`** ไม่ผ่าน branch เลย เปลี่ยนมาใช้ feature branch + Pull Request ตั้งแต่ commit ที่ 39 เป็นต้นไป
+⚠️ **บันทึกตรงไปตรงมา:** **38 commit แรก push ตรงเข้า `main`** ไม่ผ่าน branch เลย · เปลี่ยนมาใช้ feature branch + Pull Request ตั้งแต่ **commit ที่ 39 เป็นต้นไป และทุก commit หลังจากนั้นผ่าน PR ทั้งหมด**
 
 | | |
 |---|---|
-| Pull Request | **2 ใบ** — [#1](https://github.com/kit-sinlapasa/sme-inventory-system/pull/1) usability test (NFR-USE-01), [#2](https://github.com/kit-sinlapasa/sme-inventory-system/pull/2) แก้ N+1 query |
-| Merge commit | 2 ใบ อ้างอิงกลับไปหา PR ได้จาก `git log` |
+| Pull Request | เริ่มจาก [#1](https://github.com/kit-sinlapasa/sme-inventory-system/pull/1) usability test (NFR-USE-01) และ [#2](https://github.com/kit-sinlapasa/sme-inventory-system/pull/2) แก้ N+1 query — จำนวนล่าสุดดูที่หน้า Pull requests |
+| Merge commit | หนึ่งใบต่อหนึ่ง PR อ้างอิงกลับไปหา PR ได้จาก `git log` |
 | CI บน PR | ผ่านทั้ง 2 job ทุกใบก่อน merge |
-| **Code review โดยคนที่ 2** | **ไม่มี — reviews = 0 ทั้ง 2 ใบ** ผู้เขียนกับผู้ merge เป็นคนเดียวกัน |
+| **Code review โดยคนที่ 2** | **ไม่มี — reviews = 0 ทุกใบ** ผู้เขียนกับผู้ merge เป็นคนเดียวกัน |
 
-**PR ที่ไม่มีใครรีวิวยังไม่ใช่ code review** สิ่งที่ได้จริงจาก 2 ใบนี้คือ branch hygiene + CI gate + บันทึกเหตุผลของการเปลี่ยนแปลง ส่วน **"Review" ของเกณฑ์ Code & Collaboration ยังไม่ถูกเติมเต็ม** และ AI นับเป็น reviewer คนที่สองไม่ได้เพราะเป็นผู้เขียนโค้ดเองเกือบทั้งหมด (เหตุผลเต็มใน [Retrospective §2.6](04-Retrospective.md))
+**PR ที่ไม่มีใครรีวิวยังไม่ใช่ code review** สิ่งที่ได้จริงคือ branch hygiene + CI gate + บันทึกเหตุผลของการเปลี่ยนแปลง ส่วน **"Review" ของเกณฑ์ Code & Collaboration ยังไม่ถูกเติมเต็ม** และ AI นับเป็น reviewer คนที่สองไม่ได้เพราะเป็นผู้เขียนโค้ดเองเกือบทั้งหมด (เหตุผลเต็มใน [Retrospective §2.6](04-Retrospective.md))
 
 แม้จะเริ่มช้า การเปลี่ยนมาใช้ PR ก็ให้ผลจับต้องได้ทันที: การต้องเขียนคำอธิบาย PR บังคับให้เรียบเรียงว่า "พิสูจน์ยังไงว่าถูก" ซึ่งใน PR #2 นำไปสู่การเอา test ใหม่ไปรันกับโค้ดเก่าเพื่อดูว่ามัน fail จริงไหม แล้วพบว่า **test ตัวหนึ่งไม่ fail** เพราะดักฟัง database engine ผิดตัว — ถ้า push ตรงเข้า main เหมือน 38 ครั้งก่อนหน้า test ที่วัดอะไรไม่ได้เลยตัวนั้นก็คงเข้าระบบไปเรียบร้อย
 
@@ -243,7 +243,7 @@ frontend/src/
 
 ### Pipeline
 
-GitHub Actions (`.github/workflows/ci.yml`) — 2 job ขนานกัน: `backend-test` (lint → pytest กับ Postgres service container จริง) และ `frontend-build` (npm build) ทั้งคู่ต้องผ่านก่อน merge ได้ และผ่านจริงบน PR ทั้ง 2 ใบก่อน merge (แต่ยังไม่ได้ตั้ง **branch protection** บังคับที่ระดับ repo จึงยัง push ตรงเข้า `main` ได้อยู่ — ดู §⑤)
+GitHub Actions (`.github/workflows/ci.yml`) — 2 job ขนานกัน: `backend-test` (lint → pytest กับ Postgres service container จริง) และ `frontend-build` (npm build) ทั้งคู่ต้องผ่านก่อน merge ได้ และผ่านจริงบน PR ทุกใบก่อน merge (แต่ยังไม่ได้ตั้ง **branch protection** บังคับที่ระดับ repo จึงยัง push ตรงเข้า `main` ได้อยู่ — ดู §⑤)
 
 ### Environment
 
