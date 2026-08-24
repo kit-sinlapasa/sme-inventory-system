@@ -27,3 +27,9 @@ class Item(Base):
     product: Mapped["Product"] = relationship(back_populates="items")
     branch: Mapped["Branch"] = relationship(back_populates="items")
     sale: Mapped["Sale | None"] = relationship(back_populates="item", uselist=False)
+
+    @property
+    def branch_name(self) -> str:
+        """ให้ ItemOut ดึงชื่อสาขาได้ตรง ๆ — endpoint ที่คืน Item เป็น list ต้อง joinedload
+        ความสัมพันธ์นี้มาด้วย ไม่งั้นจะเกิด N+1 query (ดู routers/items.py)"""
+        return self.branch.name

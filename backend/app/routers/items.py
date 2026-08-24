@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.deps import require_admin, require_any_role
@@ -33,7 +33,9 @@ def list_items(
     """
     effective_branch_id = current_user.branch_id if current_user.role == "BranchStaff" else branch_id
 
-    query = db.query(Item)
+    # joinedload — ItemOut.branch_name อ่านจาก relationship ถ้าไม่ eager load จะยิง query
+    # ต่อ 1 ครั้งต่อ item (N+1) ซึ่งแย่มากเมื่อ list ได้ถึง 500 แถว
+    query = db.query(Item).options(joinedload(Item.branch))
     if sku_id is not None:
         query = query.filter(Item.sku_id == sku_id)
     if effective_branch_id is not None:

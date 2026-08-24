@@ -16,6 +16,10 @@ class ItemOut(BaseModel):
     sku_id: int
     serial_number: str
     branch_id: int
+    # ชื่อสาขาเต็ม — จำเป็นเพราะรายการ S/N ของ Admin รวมทุกสาขาไว้ด้วยกัน ถ้ามีแค่ branch_id
+    # ผู้ใช้จะไม่รู้ว่าของชิ้นไหนอยู่สาขาอะไร (ฝั่ง client map เองไม่ได้ เพราะ /api/branches
+    # เป็น admin-only พนักงานสาขาเรียกไม่ได้)
+    branch_name: str
     status: str
     received_at: datetime
 

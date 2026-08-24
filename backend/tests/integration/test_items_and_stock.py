@@ -111,7 +111,7 @@ def test_admin_can_lookup_any_branch_item(client, admin_token, product, other_br
     assert resp.status_code == 200
 
 
-def test_list_items_filters_by_sku(client, admin_token, product, in_stock_item):
+def test_list_items_filters_by_sku(client, admin_token, product, branch, in_stock_item):
     """FR-002 — ไล่ดู S/N รายชิ้นของ SKU หนึ่งได้ (ใช้ในหน้ารายละเอียดสินค้า)"""
     resp = client.get(
         f"/api/items?sku_id={product.id}",
@@ -121,6 +121,8 @@ def test_list_items_filters_by_sku(client, admin_token, product, in_stock_item):
     rows = resp.json()
     assert len(rows) == 1
     assert rows[0]["serial_number"] == in_stock_item.serial_number
+    # ต้องบอกด้วยว่าของชิ้นนี้อยู่สาขาไหน — Admin เห็นทุกสาขาปนกันในรายการเดียว
+    assert rows[0]["branch_name"] == branch.name
 
 
 def test_list_items_branch_staff_cannot_see_other_branch(

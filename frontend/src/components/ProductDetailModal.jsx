@@ -155,6 +155,7 @@ export default function ProductDetailModal({ skuId, onClose }) {
                       <thead className="sticky top-0 bg-ink-surface text-ink-muted">
                         <tr>
                           <th className="text-left px-3 py-1.5 font-medium">S/N</th>
+                          <th className="text-left px-3 py-1.5 font-medium">สาขา</th>
                           <th className="text-left px-3 py-1.5 font-medium">สถานะ</th>
                           <th className="text-left px-3 py-1.5 font-medium">รับเข้าเมื่อ</th>
                         </tr>
@@ -163,6 +164,7 @@ export default function ProductDetailModal({ skuId, onClose }) {
                         {items.map((item) => (
                           <tr key={item.id} className="border-t border-ink-border">
                             <td className="px-3 py-1.5 font-mono text-xs text-ink-text">{item.serial_number}</td>
+                            <td className="px-3 py-1.5 text-ink-text whitespace-nowrap">{item.branch_name}</td>
                             <td className="px-3 py-1.5">
                               <span
                                 className={`text-xs px-2 py-0.5 rounded ${
