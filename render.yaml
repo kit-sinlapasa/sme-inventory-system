@@ -18,7 +18,16 @@ services:
     # ต้องใช้ `python -m alembic` ไม่ใช่ `alembic` เฉย ๆ — bare console-script ไม่เติม
     # CWD เข้า sys.path ให้อัตโนมัติ ทำให้ `import app.models` ใน env.py หา `app` ไม่เจอ
     # (ตรวจสอบซ้ำจริงแล้วว่า uvicorn ไม่มีปัญหานี้ ปล่อยเป็น bare command ได้ตามเดิม)
-    startCommand: "python -m alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # ⚠️ ชั่วคราว — `python -m scripts.seed --reset-if-stale` ถูกแทรกไว้เพื่ออัปเดตข้อมูลสาธิต
+    # ให้เป็นชุดใหม่ (CR-013) โดยไม่ต้องส่ง DATABASE_URL ออกนอก Render · Render ฉีดตัวแปรนี้
+    # ให้ service อยู่แล้ว seed จึงรันได้จากในนี้เลย
+    #
+    # ปลอดภัยที่จะถูกเรียกซ้ำ: `--reset-if-stale` จะเขียนทับเฉพาะตอนเจอข้อมูลชุดเก่า
+    # (ดูจากจำนวนวันที่มีการขาย) ถ้าเป็นชุดใหม่แล้วจะไม่ทำอะไรและจบทันที — จำเป็นมาก
+    # เพราะ free tier หลับแล้วตื่นบ่อย startCommand จึงถูกรันซ้ำทุกครั้งที่มีคนเปิดเว็บ
+    #
+    # จะถอดบรรทัดนี้ออกทันทีที่ยืนยันว่าข้อมูลบน production เป็นชุดใหม่แล้ว
+    startCommand: "python -m alembic upgrade head && python -m scripts.seed --reset-if-stale && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION

@@ -274,14 +274,47 @@ def _wipe(db):
     db.commit()
 
 
-def seed(reset: bool = False):
+# จำนวนวันที่มีการขายขั้นต่ำที่ถือว่า "เป็นข้อมูลชุดใหม่แล้ว"
+# ชุดเก่า seed ทุกอย่างในหน้าต่างเดียว จึงมีวันที่ขายแค่ 1 วัน ส่วนชุดใหม่กระจาย 270 วัน
+# ได้ ~177 วัน — ตั้งเกณฑ์ไว้ 60 ซึ่งอยู่กลาง ๆ ห่างจากทั้งสองฝั่งมากพอไม่ให้ก้ำกึ่ง
+FRESH_DATA_MIN_SALE_DAYS = 60
+
+
+def _sale_day_spread(db) -> int:
+    """จำนวนวัน (ตามปฏิทินไทย) ที่มีการขายเกิดขึ้น — ใช้แยกข้อมูลชุดเก่ากับชุดใหม่"""
+    return (
+        db.execute(
+            text(
+                "select count(distinct (sold_at at time zone 'Asia/Bangkok')::date) from sales"
+            )
+        ).scalar()
+        or 0
+    )
+
+
+def seed(reset: bool = False, only_if_stale: bool = False):
     # พิมพ์เป้าหมายก่อนแตะข้อมูลใด ๆ เสมอ ทั้งตอนสำเร็จและตอนถูกปฏิเสธ
     print(f"เป้าหมาย: {_describe_target()}\n")
     db = SessionLocal()
-    rng = random.Random(42)  # deterministic — รันซ้ำได้ผลเดิมถ้าลบ DB แล้วรันใหม่
+    # seed คงที่ทำให้ "รูปแบบ" ของข้อมูลซ้ำเดิมได้ (สัดส่วน Pareto, การกระจายรายสัปดาห์)
+    # แต่ **จำนวนรวมไม่เท่ากันเป๊ะทุกรอบ** เพราะจุดอ้างอิงเวลาคือ datetime.now() —
+    # วันในสัปดาห์ขยับ ทำให้ rejection sampling ใน pick_sold_at รับ/ทิ้งค่าต่างกัน
+    # สาย RNG จึงเลื่อนไปทั้งสาย (วัดจริง: รันห่างกันไม่กี่ชั่วโมงได้ 913 vs 831 การขาย)
+    # ถ้าต้องการซ้ำเป๊ะจริงต้องตรึงเวลาอ้างอิงด้วย ซึ่งไม่จำเป็นสำหรับข้อมูลสาธิต
+    rng = random.Random(42)
     try:
         if db.query(User).filter(User.username == "admin").first():
-            if not reset:
+            if only_if_stale:
+                # โหมดสำหรับรันตอน service บูตบน Render ซึ่งจะถูกเรียกซ้ำทุกครั้งที่เครื่องตื่น
+                # (free tier หลับบ่อย) จึงต้อง "ไม่ทำอะไร" เมื่อข้อมูลเป็นชุดใหม่อยู่แล้ว
+                # ไม่งั้นฐานข้อมูลจะถูกล้างทิ้งทุกครั้งที่มีคนเปิดเว็บหลังเครื่องหลับ
+                spread = _sale_day_spread(db)
+                if spread >= FRESH_DATA_MIN_SALE_DAYS:
+                    print(f"ข้อมูลเป็นชุดใหม่อยู่แล้ว (มีการขาย {spread} วัน) — ไม่ทำอะไร")
+                    return
+                print(f"ข้อมูลเป็นชุดเก่า (มีการขายแค่ {spread} วัน) — จะเขียนทับด้วยชุดใหม่")
+                _wipe(db)
+            elif not reset:
                 # เตือนให้ชัดว่า "ไม่ได้ทำอะไรเลย" — เดิมพิมพ์แค่ "ข้าม" แล้ว exit 0
                 # ซึ่งอ่านเผิน ๆ เหมือน seed สำเร็จ ทำให้เข้าใจผิดว่าข้อมูลใหม่ขึ้นแล้ว
                 # ทั้งที่ยังเป็นชุดเดิมอยู่ (เจอปัญหานี้ตอนเตรียม reseed production จริง)
@@ -289,8 +322,9 @@ def seed(reset: bool = False):
                 print("   ถ้าต้องการเขียนทับด้วยชุดใหม่ ให้รันด้วย: python -m scripts.seed --reset")
                 print("   ⚠️ --reset จะลบข้อมูลในทุกตารางทิ้งก่อน ใช้กับฐานข้อมูล demo เท่านั้น")
                 sys.exit(1)
-            print("--reset: กำลังลบข้อมูลเดิมทั้งหมด...")
-            _wipe(db)
+            else:
+                print("--reset: กำลังลบข้อมูลเดิมทั้งหมด...")
+                _wipe(db)
 
         admin = User(
             username="admin",
@@ -505,4 +539,7 @@ def seed(reset: bool = False):
 
 
 if __name__ == "__main__":
-    seed(reset="--reset" in sys.argv)
+    seed(
+        reset="--reset" in sys.argv,
+        only_if_stale="--reset-if-stale" in sys.argv,
+    )
