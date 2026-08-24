@@ -21,7 +21,19 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = ""
 
+    # สัปดาห์ 8 — พบระหว่างเตรียม demo ว่า production ไม่มี CORS middleware เลย ทำให้
+    # frontend (sme-inventory-frontend.onrender.com) เรียก backend (sme-inventory-api.onrender.com)
+    # ไม่ได้จริงเพราะเป็นคนละ origin กัน (ตอน local dev ใช้ vite proxy บังไว้เลยไม่เจอบั๊กนี้จนตอนนี้)
+    # ไม่ใช่ secret จึงตั้งค่า default ที่ใช้งานได้จริงไว้เลย ไม่ต้องพึ่ง Render dashboard
+    CORS_ORIGINS: str = (
+        "https://sme-inventory-frontend.onrender.com,http://localhost:5173,http://localhost:4173"
+    )
+
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     @field_validator("DATABASE_URL")
     @classmethod
