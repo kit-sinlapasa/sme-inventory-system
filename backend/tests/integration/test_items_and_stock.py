@@ -174,3 +174,63 @@ def test_list_items_filters_by_status(client, admin_token, product, branch, db):
     serials = [r["serial_number"] for r in resp.json()]
     assert "SN-ST-INSTOCK" in serials
     assert "SN-ST-SOLD" not in serials
+
+
+# ── /api/stock ต้องไม่กลับไปเป็น N+1 ──────────────────────────────────────────
+
+def test_stock_query_count_does_not_grow_with_rows(
+    client, admin_token, db, branch, product, count_queries
+):
+    """
+    จำนวน query ของ /api/stock ต้อง **คงที่** ไม่ว่าผลลัพธ์จะกี่แถว
+
+    เดิม endpoint นี้วนลูปผลลัพธ์แล้วยิงหา BranchSKU ทีละแถว วัดจริงได้ 172 query
+    สำหรับ 170 แถว — เป็นบั๊กที่ไม่มีอะไรฟ้อง เพราะผลลัพธ์ถูกต้องทุกประการ
+    แค่ช้าลงเรื่อย ๆ ตามจำนวนข้อมูล จึงต้องวัดที่ "จำนวน query" ไม่ใช่ที่ผลลัพธ์
+    """
+    from app.models.branch_sku import BranchSKU
+    from app.models.item import Item
+    from app.models.product import Product
+
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    def hit():
+        r = client.get("/api/stock", headers=headers)
+        assert r.status_code == 200
+        return r.json()
+
+    rows_small, q_small = count_queries(hit)
+
+    # เพิ่มสินค้าอีก 12 รุ่น รุ่นละ 1 ชิ้น -> ผลลัพธ์ต้องมีแถวมากขึ้นชัดเจน
+    for i in range(12):
+        p = Product(category="GPU", brand="LoadBrand", model=f"LB-{i}", warranty_months=12)
+        db.add(p)
+        db.flush()
+        db.add(BranchSKU(branch_id=branch.id, sku_id=p.id, reorder_point=i))
+        db.add(Item(sku_id=p.id, serial_number=f"SN-NPLUS-{i:04d}", branch_id=branch.id))
+    db.commit()
+
+    rows_big, q_big = count_queries(hit)
+
+    assert len(rows_big) > len(rows_small), "ต้องมีแถวเพิ่มขึ้นจริง ไม่งั้น test นี้ไม่ได้วัดอะไร"
+    assert q_big == q_small, (
+        f"จำนวน query โตตามจำนวนแถว ({q_small} -> {q_big} เมื่อแถวเพิ่มจาก "
+        f"{len(rows_small)} เป็น {len(rows_big)}) = กลับไปเป็น N+1 แล้ว"
+    )
+
+
+def test_stock_includes_sku_without_reorder_point(client, admin_token, in_stock_item, product, branch):
+    """
+    สินค้าที่มีของแต่ยังไม่เคยตั้งจุดสั่งซื้อ ต้องยังขึ้นในผลลัพธ์ โดย reorder_point เป็น null
+
+    เป็นเหตุผลที่ query ใช้ outerjoin ไม่ใช่ join ธรรมดา — ถ้าใช้ join แถวเหล่านี้
+    จะหายไปเงียบ ๆ ซึ่งอันตรายกว่าการแสดงผิด เพราะของที่มีอยู่จริงจะไม่ปรากฏบนหน้าจอเลย
+    """
+    resp = client.get(
+        f"/api/stock?sku_id={product.id}", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert resp.status_code == 200
+    rows = resp.json()
+    assert len(rows) == 1, rows
+    assert rows[0]["on_hand"] == 1
+    assert rows[0]["reorder_point"] is None

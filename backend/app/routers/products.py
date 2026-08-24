@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.deps import require_admin, require_any_role
@@ -22,9 +22,16 @@ def list_products(
     current_user: User = Depends(require_any_role),  # Admin + BranchStaff — FR-008 read access
 ):
     """FR-001, FR-008 — ทั้งสอง role อ่านได้ แก้ไขได้เฉพาะ Admin (ดู endpoint ด้านล่าง)"""
-    query = db.query(Product)
+    # joinedload(images) — ProductOut มีฟิลด์ images (FR-013) ถ้าไม่โหลดมาพร้อมกัน
+    # SQLAlchemy จะ lazy-load ทีละสินค้าตอน serialize = N+1 (วัดจริงได้ 62 query
+    # สำหรับ 60 สินค้า) · หน้าที่เรียก endpoint นี้บ่อยที่สุดคือหน้าสร้างคำขอสั่งซื้อ
+    # ซึ่งโหลดสินค้าทั้งหมดมาทำ dropdown
+    query = db.query(Product).options(joinedload(Product.images))
     if not include_inactive:
         query = query.filter(Product.is_active.is_(True))
+    # JOIN กับตารางรูปทำให้สินค้าที่มีหลายรูปมีหลายแถวใน result set — legacy Query
+    # ของ SQLAlchemy ยุบ entity ที่ซ้ำให้เองอยู่แล้ว (ต่างจาก select() สไตล์ 2.0
+    # ที่ต้องเรียก .unique() เอง ไม่งั้น raise) มี test ยืนยันว่าไม่มี id ซ้ำหลุดออกไป
     return query.order_by(Product.category, Product.brand, Product.model).all()
 
 

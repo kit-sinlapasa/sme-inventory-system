@@ -140,3 +140,40 @@ def in_stock_item(db, branch, product):
     db.commit()
     db.refresh(item)
     return item
+
+
+@pytest.fixture()
+def count_queries():
+    """
+    นับจำนวน SQL statement ที่ถูกยิงจริงระหว่างเรียกฟังก์ชันที่ส่งเข้ามา
+
+    ใช้ยืนยันว่า endpoint ที่คืนหลายแถวไม่ได้ยิง query เพิ่มทีละแถว (N+1) —
+    บั๊กชนิดนี้ไม่มีอะไรฟ้องเลยเพราะผลลัพธ์ถูกต้องทุกประการ แค่ช้าลงเรื่อย ๆ
+    ตามจำนวนข้อมูล จึงต้องวัดที่ "จำนวน query" ไม่ใช่ที่ค่าที่คืนออกมา
+
+        rows, n = count_queries(lambda: client.get(...).json())
+
+    ⚠️ ต้องดักฟังที่ `app.database.engine` ไม่ใช่ `engine` ของ conftest —
+    ไฟล์นี้สร้าง engine ของตัวเองไว้ใช้กับ fixture ฝั่ง test ส่วน request ที่ยิงผ่าน
+    TestClient เดินผ่าน engine ของแอป คนละตัวกัน · ดักผิดตัวแล้วจะนับได้แต่ query
+    ของ fixture ทำให้ test ผ่านตลอดแม้ endpoint จะเป็น N+1 จริง (เจอมาแล้วตอนเขียน
+    test นี้ — รันกับโค้ดที่ยังเป็น N+1 แล้วมันไม่ FAIL จึงรู้ว่าวัดผิดที่)
+    """
+    from sqlalchemy import event
+
+    from app.database import engine as app_engine
+
+    def run(fn):
+        seen = []
+
+        def on_exec(conn, cursor, statement, params, context, executemany):
+            seen.append(statement)
+
+        event.listen(app_engine, "before_cursor_execute", on_exec)
+        try:
+            result = fn()
+        finally:
+            event.remove(app_engine, "before_cursor_execute", on_exec)
+        return result, len(seen)
+
+    return run
