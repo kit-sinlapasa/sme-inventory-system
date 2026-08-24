@@ -243,7 +243,7 @@ frontend/src/
 
 ### Pipeline
 
-GitHub Actions (`.github/workflows/ci.yml`) — 2 job ขนานกัน: `backend-test` (lint → pytest กับ Postgres service container จริง) และ `frontend-build` (npm build) ทั้งคู่ต้องผ่านก่อน merge ได้ และผ่านจริงบน PR ทุกใบก่อน merge (แต่ยังไม่ได้ตั้ง **branch protection** บังคับที่ระดับ repo จึงยัง push ตรงเข้า `main` ได้อยู่ — ดู §⑤)
+GitHub Actions (`.github/workflows/ci.yml`) — 2 job ขนานกัน: `backend-test` (lint → pytest กับ Postgres service container จริง) และ `frontend-build` (npm build) ทั้งคู่ต้องผ่านก่อน merge ได้ และผ่านจริงบน PR ทุกใบก่อน merge · **เปิด branch protection บน `main` แล้ว** (บังคับผ่าน PR เท่านั้น · CI ทั้ง 2 job ต้องผ่าน · branch ต้อง up-to-date · ห้าม force push/ลบ branch · เปิด `enforce_admins` เจ้าของ repo เองก็ push ตรงไม่ได้) — ทดสอบแล้วด้วยการลอง push ตรงจริง ได้ `remote rejected — protected branch hook declined` · หมายเหตุ: ตั้ง required reviews = 0 โดยตั้งใจ เพราะทำงานคนเดียวและ GitHub ไม่ให้ approve PR ตัวเอง กฎนี้จึงไม่ได้บังคับว่ามีคนรีวิว — ดู §⑤
 
 ### Environment
 
