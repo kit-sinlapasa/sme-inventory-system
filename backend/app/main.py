@@ -15,6 +15,7 @@ from app.routers import (
     products,
     public,
     purchase_requests,
+    reports,
     sales,
     stock,
 )
@@ -54,6 +55,7 @@ app.include_router(purchase_requests.router)
 app.include_router(audit_log.router)
 app.include_router(branches.router)
 app.include_router(admin.router)
+app.include_router(reports.router)  # CR-013 — สรุปผลสำหรับ dashboard เชิงวิเคราะห์
 
 
 @app.get("/health")

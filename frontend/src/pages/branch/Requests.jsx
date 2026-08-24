@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import client from '../../api/client'
 import SortableHeader, { compareValues } from '../../components/SortableHeader'
 
@@ -17,6 +18,12 @@ const STATUS_COLOR = {
 
 // FR-009, US-06 — สาขาสร้างคำขอสั่งซื้อ + ดูสถานะคำขอของตัวเอง
 export default function Requests() {
+  // CR-013 — มาจากปุ่ม "ขอสั่งซื้อ" ในตารางของใกล้หมดบนหน้าภาพรวม
+  // เลือกส่งผ่าน router state ไม่ใช่ query string เพราะเป็นค่าตั้งต้นของฟอร์มชั่วคราว
+  // ไม่ใช่สถานะของหน้าที่ควร bookmark หรือแชร์ลิงก์ได้
+  const location = useLocation()
+  const prefillSkuId = location.state?.prefillSkuId
+
   const [products, setProducts] = useState([])
   const [requests, setRequests] = useState([])
   const [skuId, setSkuId] = useState('')
@@ -36,6 +43,10 @@ export default function Requests() {
   useEffect(() => {
     loadAll()
   }, [])
+
+  useEffect(() => {
+    if (prefillSkuId != null) setSkuId(String(prefillSkuId))
+  }, [prefillSkuId])
 
   async function handleSubmit(e) {
     e.preventDefault()

@@ -9,7 +9,7 @@ CR-009 — ขยาย seed data ให้ครบ 6 หมวดหมู่ 
 import io
 import random
 import sys
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -19,7 +19,6 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 from passlib.context import CryptContext  # noqa: E402
-from sqlalchemy import func  # noqa: E402
 
 from app.database import SessionLocal  # noqa: E402
 from app.models.branch import Branch  # noqa: E402
@@ -123,6 +122,80 @@ STOCK_SCENARIOS = [
     (3, 5, 2),  # คงเหลือเท่ากับ reorder point พอดี
 ]
 
+# ── CR-013: ข้อมูลย้อนหลังให้ dashboard วิเคราะห์ได้จริง ───────────────────────────
+# เดิม seed ใส่ทุกอย่างด้วยเวลา "ตอนนี้" หมด (ห่างกันไม่ถึง 10 วินาที) ทำให้:
+#   - กราฟยอดขายรายวันเป็นแท่งเดียวโดด ๆ
+#   - คำนวณ "ขายวันละกี่ชิ้น / ของจะหมดในกี่วัน" ไม่ได้เลย
+#   - แยก "ของค้างสต็อก" ไม่ออกเพราะทุกชิ้นรับเข้าพร้อมกัน
+# จึงกระจายเวลาย้อนหลัง 9 เดือน + ทำให้ยอดขายเป็นแบบ Pareto (บางรุ่นขายดี บางรุ่นค้าง)
+# + ใส่ seasonality รายสัปดาห์ (ศุกร์-อาทิตย์ขายดีกว่า) เพื่อให้กราฟทั้ง 5 ตัวมีความหมาย
+#
+# ⚠️ นี่คือข้อมูลสาธิตที่ "ออกแบบ" ให้มีรูปแบบเหล่านี้โดยตั้งใจ ไม่ใช่ข้อมูลธุรกิจจริง
+# ตัวเลขที่ dashboard วิเคราะห์ได้จึงสะท้อนสิ่งที่ใส่เข้าไป ไม่ใช่การค้นพบเชิงธุรกิจ
+HISTORY_DAYS = 270  # ย้อนหลัง ~9 เดือน
+
+# เวลาไทย (UTC+7, ไม่มี DST) — ต้องสร้างเวลาในโซนนี้ ไม่ใช่ UTC
+# ถ้าสุ่มชั่วโมงทำการ 9-20 บนนาฬิกา UTC จะกลายเป็น 16:00-03:00 เวลาไทย ทำให้ยอดขาย
+# ราว 1 ใน 3 ตกไปนับเป็น "วันถัดไป" ตอน frontend เรนเดอร์ด้วย th-TH → กราฟรายวัน/รายสัปดาห์
+# จะยังมีความต่างให้เห็น แต่เป็นความต่างที่ผิดวัน ตรวจด้วยตาเปล่าไม่เจอ
+BKK = timezone(timedelta(hours=7))
+
+# น้ำหนักยอดขายตามวันในสัปดาห์ (จันทร์=0 ... อาทิตย์=6) — ร้านอะไหล่คอมขายดีช่วงสุดสัปดาห์
+DOW_WEIGHT = {0: 0.70, 1: 0.65, 2: 0.80, 3: 0.85, 4: 1.20, 5: 1.60, 6: 1.40}
+MAX_DOW_WEIGHT = max(DOW_WEIGHT.values())
+
+# Pareto — ร้านจริงมีไม่กี่รุ่นที่ขายดีมาก และมีรุ่นที่แทบไม่ขยับเลย
+# sales_factor = ตัวคูณจำนวนที่ขายได้ต่อ (รุ่น, สาขา) — 0 = ไม่เคยขายเลย กลายเป็นของค้างสต็อก
+# age_range   = ช่วงอายุ (วัน) ของ "ของที่ยังเหลือ" — ของขายดีหมุนเร็วจึงเป็นของใหม่
+#               ส่วนของค้างสต็อกต้องเก่าจริง ไม่งั้นกราฟอายุสต็อกจะกองอยู่ถังเดียว
+POPULARITY_TIERS = [
+    ("ขายดีมาก", 0.15, 4.0, (0, 45)),
+    ("ขายดี", 0.20, 2.0, (5, 75)),
+    ("ปานกลาง", 0.30, 1.0, (15, 130)),
+    ("ขายช้า", 0.20, 0.4, (70, 200)),
+    ("ค้างสต็อก", 0.15, 0.0, (185, HISTORY_DAYS)),
+]
+
+
+def build_popularity_map(products, rng):
+    """แจกระดับความนิยมให้สินค้าแบบ deterministic — คืน {product_id: (factor, age_range)}"""
+    shuffled = products[:]
+    rng.shuffle(shuffled)
+    result, start = {}, 0
+    for i, (_label, share, factor, age_range) in enumerate(POPULARITY_TIERS):
+        end = len(shuffled) if i == len(POPULARITY_TIERS) - 1 else start + round(len(shuffled) * share)
+        for p in shuffled[start:end]:
+            result[p.id] = (factor, age_range)
+        start = end
+    return result
+
+
+def pick_sold_at(rng, received_at, now):
+    """
+    สุ่มเวลาขายหลังวันรับเข้า ถ่วงน้ำหนักตามวันในสัปดาห์ด้วย rejection sampling
+    (โอกาสผ่านต่อรอบ ~0.64 จึงแทบไม่มีทางวนครบ 25 รอบแล้วไม่ได้ค่า)
+
+    ผู้เรียกต้องส่ง received_at ที่เก่ากว่า now อย่างน้อย 2 วัน เพื่อให้ span >= 1 เสมอ —
+    ถ้าปล่อยให้ฟังก์ชันคืน None แล้วผู้เรียกใช้ค่า fallback แบบ received_at + 1 วัน
+    ค่านั้นจะไม่ผ่านการถ่วงน้ำหนักวัน ทำให้กราฟยอดขายรายวันในสัปดาห์เจือจางลง
+    """
+    span = (now - received_at).days
+    assert span >= 1, "received_at ต้องเก่ากว่า now อย่างน้อย 1 วัน"
+    for _ in range(50):
+        # ยกกำลัง 0.7 = เอียงเข้าหาวันปัจจุบัน (ขายเพิ่งเกิดมากกว่าขายนานแล้ว)
+        offset = int(span * (rng.random() ** 0.7))
+        # ตั้งเวลาบนวันนั้น ๆ ตรง ๆ (ไม่ใช่บวกชั่วโมงทับเวลาเดิมของ received_at ซึ่งจะล้นไปวันถัดไป)
+        day = (received_at + timedelta(days=offset)).date()
+        cand = datetime.combine(day, datetime.min.time(), tzinfo=BKK) + timedelta(
+            hours=rng.randint(9, 20), minutes=rng.randint(0, 59)
+        )
+        if cand > now or cand < received_at:
+            continue
+        if rng.random() < DOW_WEIGHT[cand.weekday()] / MAX_DOW_WEIGHT:
+            return cand
+    return received_at + timedelta(days=1)
+
+
 # 4 สาขาที่มีขนาดต่างกันจริง — ไม่ให้ทุกสาขามีของเท่ากันเป๊ะเพราะไม่สมจริง
 # sku_coverage = สัดส่วน SKU ที่สาขานั้นสต็อก (สาขาเล็กไม่ได้มีของครบทุกรุ่น)
 # size = ตัวคูณจำนวนที่รับเข้า (สาขาใหญ่รับเข้าเยอะกว่าต่อรุ่น)
@@ -200,9 +273,9 @@ def seed():
             branches.append((branch, staff, profile))
 
         # --- 60 สินค้า (6 หมวดหมู่ x 10) พร้อมรูปตัวอย่าง ---
+        # สร้างสินค้าให้ครบก่อน แล้วค่อยลงสต็อก เพราะการแจกระดับความนิยม (Pareto) ต้องเห็น
+        # สินค้าทั้งชุดถึงจะแบ่งสัดส่วนได้ถูก — แบ่งไปทีละตัวระหว่างวนลูปทำไม่ได้
         products = []
-        serial_counter = 0
-        combo_index = 0  # นับ (product, branch) แยกจาก serial_counter — กันไม่ให้ modulo วนซ้ำ pattern เดิม
         for category, entries in CATALOG.items():
             for brand, model in entries:
                 product = Product(
@@ -213,79 +286,100 @@ def seed():
                     warranty_months=WARRANTY_MONTHS[category],
                 )
                 db.add(product)
-                db.commit()
-                db.refresh(product)
                 products.append(product)
+        db.commit()
 
-                db.add(
-                    ProductImage(
-                        product_id=product.id,
-                        image_url=f"https://placehold.co/400x300?text={category}",
-                        sort_order=0,
-                    )
+        for product in products:
+            db.add(
+                ProductImage(
+                    product_id=product.id,
+                    image_url=f"https://placehold.co/400x300?text={product.category}",
+                    sort_order=0,
                 )
+            )
+        db.commit()
+
+        popularity = build_popularity_map(products, rng)
+        now = datetime.now(BKK)
+
+        serial_counter = 0
+        combo_index = 0  # นับ (product, branch) แยกจาก serial_counter — กันไม่ให้ modulo วนซ้ำ pattern เดิม
+        for product in products:
+            category = product.category
+            # --- รับเข้าสต็อก + ตั้ง reorder point + ขายบางส่วน แยกตามขนาดสาขา ---
+            for branch, staff, profile in branches:
+                combo_index += 1
+
+                # สาขาเล็กไม่ได้สต็อกครบทุกรุ่น — ข้ามบางรุ่นแบบ deterministic
+                if rng.random() > profile["sku_coverage"]:
+                    continue
+
+                reorder_point, base_received, base_sold = STOCK_SCENARIOS[
+                    combo_index % len(STOCK_SCENARIOS)
+                ]
+                factor, age_range = popularity[product.id]
+
+                # scenario คุมว่า "เหลือเท่าไร" (จึงคุมการแจ้งเตือนใกล้หมดได้เหมือนเดิม)
+                # ส่วนความนิยมคุมว่า "ขายไปแล้วกี่ชิ้นในอดีต" — สองอย่างนี้แยกกัน
+                remaining = max(0, round((base_received - base_sold) * profile["size"]))
+                sold = round(factor * profile["size"] * rng.uniform(2.0, 5.0))
+
+                db.add(BranchSKU(branch_id=branch.id, sku_id=product.id, reorder_point=reorder_point))
+
+                # commit เป็นชุดต่อ (สาขา, สินค้า) ไม่ใช่ต่อชิ้น — ตอน seed ขึ้น production
+                # ที่ DB อยู่คนละทวีป การ commit ทีละชิ้นทำให้ใช้เวลาเป็นสิบ ๆ นาที
+                # เพราะเสีย network round-trip ทุกครั้ง
+                #
+                # ของที่ยังเหลือ: อายุตามระดับความนิยม (ขายดี = ของใหม่, ค้างสต็อก = ของเก่าจริง)
+                # ของที่ขายแล้ว: บังคับอายุ >= 2 วัน เพื่อให้ pick_sold_at มีช่วงให้เลือกเสมอ
+                plan = [(rng.randint(*age_range), "InStock") for _ in range(remaining)]
+                plan += [(rng.randint(2, HISTORY_DAYS), "Sold") for _ in range(sold)]
+
+                sold_items = []  # [(Item, received_at)] — เก็บ received_at ไว้เองเพราะหลัง commit
+                for age, status in plan:  # SQLAlchemy จะ expire attribute แล้วอ่านกลับมาเป็น UTC
+                    serial_counter += 1
+                    received_at = now - timedelta(days=age, hours=rng.randint(0, 23))
+                    item = Item(
+                        sku_id=product.id,
+                        serial_number=f"SN-{category.upper()}-{serial_counter:05d}",
+                        branch_id=branch.id,
+                        status=status,
+                        received_at=received_at,
+                    )
+                    db.add(item)
+                    if status == "Sold":
+                        sold_items.append((item, received_at))
+
+                db.flush()  # ได้ item.id มาอ้างใน Sale โดยไม่ expire ค่าที่เพิ่งตั้งไป
+
+                for item, received_at in sold_items:
+                    sold_at = pick_sold_at(rng, received_at, now)
+                    db.add(
+                        Sale(
+                            item_id=item.id,
+                            buyer_name=rng.choice(
+                                ["สมชาย ใจดี", "สุดา รักเรียน", "วิชัย มั่นคง", "อรทัย สว่างใจ", "ประยุทธ ตั้งใจ"]
+                            ),
+                            buyer_phone=f"08{rng.randint(10000000, 99999999)}",
+                            branch_id=branch.id,
+                            sold_at=sold_at,
+                            # ประกันนับจากวันขายจริง ไม่ใช่วันที่รัน seed — ไม่งั้นของที่ "ขายเมื่อ 8 เดือนก่อน"
+                            # จะมีประกันยาวกว่าความจริงไป 8 เดือน
+                            warranty_expires_at=sold_at + timedelta(days=30 * product.warranty_months),
+                            idempotency_key=f"seed-{item.id}",
+                        )
+                    )
                 db.commit()
 
-                # --- รับเข้าสต็อก + ตั้ง reorder point + ขายบางส่วน แยกตามขนาดสาขา ---
-                for branch, staff, profile in branches:
-                    combo_index += 1
-
-                    # สาขาเล็กไม่ได้สต็อกครบทุกรุ่น — ข้ามบางรุ่นแบบ deterministic
-                    if rng.random() > profile["sku_coverage"]:
-                        continue
-
-                    reorder_point, base_received, base_sold = STOCK_SCENARIOS[
-                        combo_index % len(STOCK_SCENARIOS)
-                    ]
-                    # คูณด้วยขนาดสาขา แล้วปัดขึ้นอย่างน้อย 1 ชิ้น (สต็อกไว้แล้วต้องมีของจริง)
-                    received = max(1, round(base_received * profile["size"]))
-                    sold = min(base_sold, received)  # ขายเกินที่รับเข้าไม่ได้
-
-                    branch_sku = BranchSKU(branch_id=branch.id, sku_id=product.id, reorder_point=reorder_point)
-                    db.add(branch_sku)
-
-                    # commit เป็นชุดต่อ (สาขา, สินค้า) ไม่ใช่ต่อชิ้น — ตอน seed ขึ้น production
-                    # ที่ DB อยู่คนละทวีป การ commit ทีละชิ้นทำให้ใช้เวลาเป็นสิบ ๆ นาที
-                    # เพราะเสีย network round-trip ทุกครั้ง
-                    received_items = []
-                    for _ in range(received):
-                        serial_counter += 1
-                        item = Item(
-                            sku_id=product.id,
-                            serial_number=f"SN-{category.upper()}-{serial_counter:05d}",
-                            branch_id=branch.id,
-                            status="InStock",
-                        )
-                        db.add(item)
-                        received_items.append(item)
-                    db.commit()
-
-                    # CR-006 — รับเข้าเคลียร์ debounce เท่านั้น ไม่ยิงแจ้งเตือนใหม่ (ตรงกับ items.py จริง)
-                    # เรียกครั้งเดียวหลังรับเข้าครบ ผลลัพธ์เท่ากับเรียกทีละชิ้นเพราะ logic ดูยอดรวม
-                    # ไม่ได้ดูว่ารับเข้ากี่ครั้ง
-                    evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=False)
-
-                    for item in received_items[:sold]:
-                        item.status = "Sold"
-                        db.add(item)
-                        db.add(
-                            Sale(
-                                item_id=item.id,
-                                buyer_name=rng.choice(
-                                    ["สมชาย ใจดี", "สุดา รักเรียน", "วิชัย มั่นคง", "อรทัย สว่างใจ", "ประยุทธ ตั้งใจ"]
-                                ),
-                                buyer_phone=f"08{rng.randint(10000000, 99999999)}",
-                                branch_id=branch.id,
-                                warranty_expires_at=func.now() + timedelta(days=30 * product.warranty_months),
-                                idempotency_key=f"seed-{item.id}",
-                            )
-                        )
-                    if sold:
-                        db.commit()
-                        # CR-006 — ขายเป็นจุดเดียวที่ยิงแจ้งเตือนใหม่ได้ (ตรงกับ sales.py จริง)
-                        # เรียกเฉพาะเมื่อมีการขายจริง ถ้าไม่มีขายก็ต้องไม่ตั้ง flag
-                        # (ไม่งั้นรายการที่สต็อกต่ำตั้งแต่แรกจะถูกมองว่า "แจ้งเตือนไปแล้ว" ทั้งที่ยังไม่เคยแจ้ง)
-                        evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=True)
+                # CR-006 — รับเข้าเคลียร์ debounce เท่านั้น ไม่ยิงแจ้งเตือนใหม่ (ตรงกับ items.py จริง)
+                # เรียกครั้งเดียวหลังรับเข้าครบ ผลลัพธ์เท่ากับเรียกทีละชิ้นเพราะ logic ดูยอดรวม
+                # ไม่ได้ดูว่ารับเข้ากี่ครั้ง
+                evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=False)
+                if sold:
+                    # CR-006 — ขายเป็นจุดเดียวที่ยิงแจ้งเตือนใหม่ได้ (ตรงกับ sales.py จริง)
+                    # เรียกเฉพาะเมื่อมีการขายจริง ถ้าไม่มีขายก็ต้องไม่ตั้ง flag
+                    # (ไม่งั้นรายการที่สต็อกต่ำตั้งแต่แรกจะถูกมองว่า "แจ้งเตือนไปแล้ว" ทั้งที่ยังไม่เคยแจ้ง)
+                    evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=True)
 
         # --- คำขอสั่งซื้อ (PR) — มาจากหลายสาขา ไม่ใช่สาขาเดียวเหมือนเดิม ---
         # สาขาเล็กขอของบ่อยกว่าเพราะสต็อกน้อย (สำนักงานใหญ่เป็นคลังกลาง ไม่ต้องขอจากตัวเอง)
@@ -300,17 +394,26 @@ def seed():
 
         for branch, staff, profile in requesting:
             # สาขายิ่งเล็ก ยิ่งขอเยอะ (size น้อย = ของน้อย = ต้องเติมบ่อย)
-            n_requests = {0.5: 5, 0.7: 4, 1.0: 3}.get(profile["size"], 3)
+            n_requests = {0.5: 10, 0.7: 8, 1.0: 6}.get(profile["size"], 6)
             for product in rng.sample(products, n_requests):
-                status = rng.choice(["Pending", "Approved", "Rejected"])
+                # ถ่วงให้ Pending เยอะกว่า — คิวงานค้างเป็นเรื่องปกติของงานอนุมัติจริง
+                # และตาราง "คำขอค้างพิจารณา" บน dashboard ต้องมีของให้เรียงลำดับความเร่งด่วนพอสมควร
+                status = rng.choices(["Pending", "Approved", "Rejected"], weights=[5, 3, 2])[0]
+                # กระจายวันที่ขอย้อนหลัง เพื่อให้ตาราง "คำขอค้างพิจารณา" เรียงตามอายุได้จริง
+                # (ถ้าทุกใบขอวันเดียวกัน คอลัมน์ 'ค้างมากี่วัน' จะเป็นเลขเดียวกันหมด ไม่มีประโยชน์)
+                requested_at = now - timedelta(days=rng.randint(1, 45), hours=rng.randint(0, 23))
                 pr = PurchaseRequest(
                     branch_id=branch.id,
                     sku_id=product.id,
                     quantity=rng.randint(2, 12),
                     status=status,
                     requested_by=staff.id,
+                    requested_at=requested_at,
                     decided_by=None if status == "Pending" else admin.id,
-                    decided_at=None if status == "Pending" else func.now(),
+                    # ตัดสินใจหลังขอ 1-5 วัน — สะท้อนรอบอนุมัติจริง ไม่ใช่อนุมัติทันทีวินาทีเดียวกัน
+                    decided_at=(
+                        None if status == "Pending" else requested_at + timedelta(days=rng.randint(1, 5))
+                    ),
                     reject_reason=(
                         reject_reasons[reject_i % len(reject_reasons)] if status == "Rejected" else None
                     ),
@@ -342,6 +445,12 @@ def seed():
         print(
             f"  คำขอสั่งซื้อ: {counts['Pending']} Pending, {counts['Approved']} Approved (มี PO), "
             f"{counts['Rejected']} Rejected"
+        )
+        total_sales = db.query(Sale).count()
+        total_items = db.query(Item).count()
+        print(
+            f"  ประวัติการขาย {total_sales} รายการ จากสินค้าทั้งหมด {total_items} ชิ้น "
+            f"กระจายย้อนหลัง {HISTORY_DAYS} วัน (เวลาไทย)"
         )
     finally:
         db.close()
