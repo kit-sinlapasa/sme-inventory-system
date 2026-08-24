@@ -4,6 +4,8 @@ function logout(navigate) {
   localStorage.removeItem('token')
   localStorage.removeItem('role')
   localStorage.removeItem('branch_id')
+  localStorage.removeItem('branch_name')
+  localStorage.removeItem('username')
   navigate('/login')
 }
 
@@ -16,6 +18,7 @@ const linkClass = ({ isActive }) =>
 
 export default function AdminLayout() {
   const navigate = useNavigate()
+  const username = localStorage.getItem('username') || ''
 
   return (
     <div className="rd-page">
@@ -40,9 +43,15 @@ export default function AdminLayout() {
             </NavLink>
           </nav>
         </div>
-        <button onClick={() => logout(navigate)} className="text-sm text-ink-muted hover:text-[#d03b3b]">
-          ออกจากระบบ
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Admin ไม่สังกัดสาขา — ระบุให้ชัดว่าเห็นภาพรวมทุกสาขา ไม่ใช่สาขาใดสาขาหนึ่ง */}
+          <span className="text-sm text-ink-muted">
+            {username} · <span className="text-ink-text">ทุกสาขา</span>
+          </span>
+          <button onClick={() => logout(navigate)} className="text-sm text-ink-muted hover:text-[#d03b3b]">
+            ออกจากระบบ
+          </button>
+        </div>
       </header>
       <main className="p-6">
         <Outlet />

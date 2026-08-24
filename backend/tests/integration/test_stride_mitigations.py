@@ -89,3 +89,23 @@ def test_unhandled_exception_does_not_leak_internal_details():
     assert SECRET_INTERNAL_DETAIL not in body, "ข้อความ exception จริงต้องไม่รั่วไปถึง response ที่ client เห็น"
     assert "Traceback" not in body
     assert ".py" not in body, "ต้องไม่มี path ไฟล์ฝั่ง server รั่วออกไปใน response"
+
+
+def test_login_returns_username_and_branch_name(client, branch_staff_user, branch):
+    """UI ต้องแสดงได้ว่ากำลังทำงานในนามใคร/สาขาไหน — เดิมมีแค่ branch_id ที่ผู้ใช้อ่านไม่รู้เรื่อง"""
+    resp = client.post("/api/auth/login", json={"username": "branch_staff_test", "password": "testpassword123"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["username"] == "branch_staff_test"
+    assert body["branch_name"] == branch.name
+    assert body["branch_id"] == branch.id
+
+
+def test_admin_login_has_no_branch_name(client, admin_user):
+    """Admin ไม่สังกัดสาขา — branch_name ต้องเป็น null ไม่ใช่ string ว่างหรือ error"""
+    resp = client.post("/api/auth/login", json={"username": "admin_test", "password": "testpassword123"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["username"] == "admin_test"
+    assert body["branch_name"] is None
+    assert body["branch_id"] is None

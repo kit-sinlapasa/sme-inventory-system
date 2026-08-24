@@ -243,8 +243,10 @@ def seed():
 
                     branch_sku = BranchSKU(branch_id=branch.id, sku_id=product.id, reorder_point=reorder_point)
                     db.add(branch_sku)
-                    db.commit()
 
+                    # commit เป็นชุดต่อ (สาขา, สินค้า) ไม่ใช่ต่อชิ้น — ตอน seed ขึ้น production
+                    # ที่ DB อยู่คนละทวีป การ commit ทีละชิ้นทำให้ใช้เวลาเป็นสิบ ๆ นาที
+                    # เพราะเสีย network round-trip ทุกครั้ง
                     received_items = []
                     for _ in range(received):
                         serial_counter += 1
@@ -255,29 +257,34 @@ def seed():
                             status="InStock",
                         )
                         db.add(item)
-                        db.commit()
-                        db.refresh(item)
                         received_items.append(item)
-                        # CR-006 — รับเข้าเคลียร์ debounce เท่านั้น ไม่ยิงแจ้งเตือนใหม่ (ตรงกับ items.py จริง)
-                        evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=False)
+                    db.commit()
+
+                    # CR-006 — รับเข้าเคลียร์ debounce เท่านั้น ไม่ยิงแจ้งเตือนใหม่ (ตรงกับ items.py จริง)
+                    # เรียกครั้งเดียวหลังรับเข้าครบ ผลลัพธ์เท่ากับเรียกทีละชิ้นเพราะ logic ดูยอดรวม
+                    # ไม่ได้ดูว่ารับเข้ากี่ครั้ง
+                    evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=False)
 
                     for item in received_items[:sold]:
                         item.status = "Sold"
                         db.add(item)
-                        db.commit()
-                        sale = Sale(
-                            item_id=item.id,
-                            buyer_name=rng.choice(
-                                ["สมชาย ใจดี", "สุดา รักเรียน", "วิชัย มั่นคง", "อรทัย สว่างใจ", "ประยุทธ ตั้งใจ"]
-                            ),
-                            buyer_phone=f"08{rng.randint(10000000, 99999999)}",
-                            branch_id=branch.id,
-                            warranty_expires_at=func.now() + timedelta(days=30 * product.warranty_months),
-                            idempotency_key=f"seed-{item.id}",
+                        db.add(
+                            Sale(
+                                item_id=item.id,
+                                buyer_name=rng.choice(
+                                    ["สมชาย ใจดี", "สุดา รักเรียน", "วิชัย มั่นคง", "อรทัย สว่างใจ", "ประยุทธ ตั้งใจ"]
+                                ),
+                                buyer_phone=f"08{rng.randint(10000000, 99999999)}",
+                                branch_id=branch.id,
+                                warranty_expires_at=func.now() + timedelta(days=30 * product.warranty_months),
+                                idempotency_key=f"seed-{item.id}",
+                            )
                         )
-                        db.add(sale)
+                    if sold:
                         db.commit()
                         # CR-006 — ขายเป็นจุดเดียวที่ยิงแจ้งเตือนใหม่ได้ (ตรงกับ sales.py จริง)
+                        # เรียกเฉพาะเมื่อมีการขายจริง ถ้าไม่มีขายก็ต้องไม่ตั้ง flag
+                        # (ไม่งั้นรายการที่สต็อกต่ำตั้งแต่แรกจะถูกมองว่า "แจ้งเตือนไปแล้ว" ทั้งที่ยังไม่เคยแจ้ง)
                         evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=True)
 
         # --- คำขอสั่งซื้อ (PR) — มาจากหลายสาขา ไม่ใช่สาขาเดียวเหมือนเดิม ---

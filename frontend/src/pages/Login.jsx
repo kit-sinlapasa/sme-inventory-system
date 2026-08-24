@@ -18,10 +18,13 @@ export default function Login() {
       const { data } = await client.post('/auth/login', { username, password })
       localStorage.setItem('token', data.access_token)
       localStorage.setItem('role', data.role)
+      localStorage.setItem('username', data.username)
       if (data.branch_id != null) {
         localStorage.setItem('branch_id', String(data.branch_id))
+        localStorage.setItem('branch_name', data.branch_name ?? '')
       } else {
         localStorage.removeItem('branch_id')
+        localStorage.removeItem('branch_name')
       }
       navigate(data.role === 'Admin' ? '/admin' : '/branch')
     } catch (err) {

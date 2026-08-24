@@ -20,4 +20,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     token = create_access_token(user)
-    return TokenResponse(access_token=token, role=user.role, branch_id=user.branch_id)
+    return TokenResponse(
+        access_token=token,
+        role=user.role,
+        branch_id=user.branch_id,
+        username=user.username,
+        branch_name=user.branch.name if user.branch else None,  # Admin ไม่สังกัดสาขา = None
+    )
