@@ -28,6 +28,17 @@ def get_stock(
     """
     effective_branch_id = current_user.branch_id if current_user.role == "BranchStaff" else branch_id
 
+    # reorder_point (FR-012, CR-002 — ต่อ SKU ต่อสาขา) ดึงมาพร้อมกันใน query เดียว
+    #
+    # เดิมวนลูปผลลัพธ์แล้วยิง query หา BranchSKU ทีละแถว = N+1 วัดจริงได้ 172 query
+    # สำหรับ 170 แถว · ปัญหานี้โตตามจำนวนข้อมูล ไม่ใช่ค่าคงที่ พอสต็อกเยอะขึ้นจะช้าลง
+    # เรื่อย ๆ โดยที่โค้ดหน้าตาเหมือนเดิมทุกบรรทัด
+    #
+    # ใช้ outerjoin เพราะสินค้าที่มีของในสาขาแต่ยังไม่เคยตั้งจุดสั่งซื้อต้องยังขึ้นในผลลัพธ์
+    # (reorder_point = None) ถ้าใช้ join ธรรมดาแถวเหล่านั้นจะหายไปเงียบ ๆ
+    #
+    # ใส่ reorder_point ใน group_by ได้อย่างปลอดภัยเพราะ BranchSKU มี
+    # UniqueConstraint("branch_id", "sku_id") — หนึ่งคู่มีได้แถวเดียว จึงแตกกลุ่มเพิ่มไม่ได้
     query = (
         db.query(
             Product.id.label("sku_id"),
@@ -37,11 +48,24 @@ def get_stock(
             Item.branch_id,
             Branch.name.label("branch_name"),
             func.count(Item.id).label("on_hand"),
+            BranchSKU.reorder_point,
         )
         .join(Item, Item.sku_id == Product.id)
         .join(Branch, Branch.id == Item.branch_id)
+        .outerjoin(
+            BranchSKU,
+            (BranchSKU.sku_id == Product.id) & (BranchSKU.branch_id == Item.branch_id),
+        )
         .filter(Item.status == "InStock")
-        .group_by(Product.id, Product.category, Product.brand, Product.model, Item.branch_id, Branch.name)
+        .group_by(
+            Product.id,
+            Product.category,
+            Product.brand,
+            Product.model,
+            Item.branch_id,
+            Branch.name,
+            BranchSKU.reorder_point,
+        )
     )
 
     if effective_branch_id is not None:
@@ -49,26 +73,16 @@ def get_stock(
     if sku_id is not None:
         query = query.filter(Product.id == sku_id)
 
-    rows = query.all()
-
-    # เติม reorder_point ต่อแถว (FR-012, CR-002 — ต่อ SKU ต่อสาขา)
-    result = []
-    for row in rows:
-        branch_sku = (
-            db.query(BranchSKU)
-            .filter(BranchSKU.branch_id == row.branch_id, BranchSKU.sku_id == row.sku_id)
-            .first()
+    return [
+        StockLevel(
+            sku_id=row.sku_id,
+            category=row.category,
+            brand=row.brand,
+            model=row.model,
+            branch_id=row.branch_id,
+            branch_name=row.branch_name,
+            on_hand=row.on_hand,
+            reorder_point=row.reorder_point,
         )
-        result.append(
-            StockLevel(
-                sku_id=row.sku_id,
-                category=row.category,
-                brand=row.brand,
-                model=row.model,
-                branch_id=row.branch_id,
-                branch_name=row.branch_name,
-                on_hand=row.on_hand,
-                reorder_point=branch_sku.reorder_point if branch_sku else None,
-            )
-        )
-    return result
+        for row in query.all()
+    ]

@@ -86,3 +86,47 @@ def test_branch_staff_cannot_restore_product(client, branch_staff_token, product
         f"/api/products/{product.id}/restore", headers={"Authorization": f"Bearer {branch_staff_token}"}
     )
     assert resp.status_code == 403
+
+
+def test_product_list_query_count_does_not_grow_and_has_no_duplicates(
+    client, admin_token, db, product, count_queries
+):
+    """
+    /api/products ต้องโหลดรูปมาพร้อมกัน ไม่ใช่ lazy-load ทีละสินค้า
+
+    ProductOut มีฟิลด์ images (FR-013) ถ้าไม่ joinedload มาด้วย SQLAlchemy จะยิง query
+    เพิ่มทีละสินค้าตอน serialize — วัดจริงได้ 62 query สำหรับ 60 สินค้า
+
+    อีกด้านหนึ่งที่ต้องกันคือ JOIN ทำให้สินค้าที่มีหลายรูปกลายเป็นหลายแถว test นี้จึง
+    ตรวจทั้ง "จำนวน query คงที่" และ "ไม่มี id ซ้ำ" พร้อมกัน เพราะการแก้อย่างแรก
+    เป็นสาเหตุของอย่างหลัง
+    """
+    from app.models.product import Product
+    from app.models.product_image import ProductImage
+
+    headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # สินค้าตัวแรกมีหลายรูป -> ถ้า JOIN ไม่ถูกยุบ จะโผล่ซ้ำ 3 แถว
+    for i in range(3):
+        db.add(ProductImage(product_id=product.id, image_url=f"https://e/{i}.png", sort_order=i))
+    db.commit()
+
+    def hit():
+        r = client.get("/api/products", headers=headers)
+        assert r.status_code == 200
+        return r.json()
+
+    rows_small, q_small = count_queries(hit)
+    ids = [p["id"] for p in rows_small]
+    assert len(ids) == len(set(ids)), f"สินค้าโผล่ซ้ำจาก JOIN กับตารางรูป: {ids}"
+    assert len(rows_small[0]["images"]) == 3
+
+    for i in range(10):
+        db.add(Product(category="CPU", brand="Bulk", model=f"BK-{i}", warranty_months=12))
+    db.commit()
+
+    rows_big, q_big = count_queries(hit)
+    assert len(rows_big) > len(rows_small)
+    assert q_big == q_small, (
+        f"จำนวน query โตตามจำนวนสินค้า ({q_small} -> {q_big}) = lazy-load รูปทีละตัวอีกแล้ว"
+    )
