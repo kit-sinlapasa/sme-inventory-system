@@ -40,7 +40,18 @@ cp ../.env.example .env   # แก้ DATABASE_URL/JWT_SECRET ตามจริ
 alembic upgrade head       # สร้างตารางจาก ER Model
 python -m scripts.seed     # สร้าง user/branch ทดสอบ (ดูรหัสผ่านด้านล่าง)
 uvicorn app.main:app --reload --port 8000
+```
 
+> **ถ้าฐานข้อมูลมีข้อมูลอยู่แล้ว** `scripts.seed` จะ**ไม่ทำอะไรและ exit 1** เพื่อกันการเขียนทับโดยไม่ตั้งใจ
+> ถ้าต้องการแทนที่ด้วยชุดใหม่ (เช่นตอนอัปเดตข้อมูลสาธิตขึ้น production) ให้ใช้:
+>
+> ```bash
+> DATABASE_URL="<External Database URL จาก Render dashboard>" python -m scripts.seed --reset
+> ```
+>
+> `--reset` **ลบข้อมูลในทุกตารางทิ้งก่อน** — ใช้กับฐานข้อมูลสาธิตเท่านั้น ห้ามใช้กับข้อมูลจริง
+
+```bash
 # 3. Frontend (terminal ใหม่)
 cd frontend
 npm install

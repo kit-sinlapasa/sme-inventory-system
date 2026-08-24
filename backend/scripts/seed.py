@@ -236,13 +236,34 @@ BRANCH_PROFILES = [
 ]
 
 
-def seed():
+def _wipe(db):
+    """
+    ล้างทุกตารางตามลำดับ dependency ย้อนกลับ — ต้องเรียงจากตารางที่ถูกอ้างอิงน้อยสุดไปมากสุด
+    ไม่งั้นจะติด foreign key constraint · ใช้ metadata.sorted_tables เพื่อไม่ต้องไล่เรียงเอง
+    (ถ้ามีตารางใหม่เพิ่มเข้ามาทีหลังจะถูกล้างด้วยอัตโนมัติ ไม่ต้องกลับมาแก้ตรงนี้)
+    """
+    from app.database import Base
+
+    for table in reversed(Base.metadata.sorted_tables):
+        db.execute(table.delete())
+    db.commit()
+
+
+def seed(reset: bool = False):
     db = SessionLocal()
     rng = random.Random(42)  # deterministic — รันซ้ำได้ผลเดิมถ้าลบ DB แล้วรันใหม่
     try:
         if db.query(User).filter(User.username == "admin").first():
-            print("Seed data มีอยู่แล้ว — ข้าม")
-            return
+            if not reset:
+                # เตือนให้ชัดว่า "ไม่ได้ทำอะไรเลย" — เดิมพิมพ์แค่ "ข้าม" แล้ว exit 0
+                # ซึ่งอ่านเผิน ๆ เหมือน seed สำเร็จ ทำให้เข้าใจผิดว่าข้อมูลใหม่ขึ้นแล้ว
+                # ทั้งที่ยังเป็นชุดเดิมอยู่ (เจอปัญหานี้ตอนเตรียม reseed production จริง)
+                print("❌ ไม่ได้ทำอะไร — ฐานข้อมูลนี้มี seed data อยู่แล้ว")
+                print("   ถ้าต้องการเขียนทับด้วยชุดใหม่ ให้รันด้วย: python -m scripts.seed --reset")
+                print("   ⚠️ --reset จะลบข้อมูลในทุกตารางทิ้งก่อน ใช้กับฐานข้อมูล demo เท่านั้น")
+                sys.exit(1)
+            print("--reset: กำลังลบข้อมูลเดิมทั้งหมด...")
+            _wipe(db)
 
         admin = User(
             username="admin",
@@ -457,4 +478,4 @@ def seed():
 
 
 if __name__ == "__main__":
-    seed()
+    seed(reset="--reset" in sys.argv)
