@@ -70,7 +70,7 @@ npm run dev
 | KPI Dashboard สรุปภาพรวม (FR-014) | ✅ ใช้งานได้ — เสริมหน้า Dashboard เดิมทั้ง Admin/Branch ไม่มี endpoint ใหม่ (CR-008) — **ธีมสว่างสไตล์ dashboard.render.com จริง + กราฟแท่งแนวนอนสีผ่าน CVD-safety check (CR-010)** เฉพาะหน้านี้ |
 | Branch UI (สต็อก/บันทึกขาย/คำขอสั่งซื้อ) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
 | Admin UI (สต็อกรวม/สินค้า/รับสต็อก/คำขอ/audit log) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
-| Seed data สาธิต (CR-009) | ✅ 60 สินค้า (6 หมวดหมู่ x 10) พร้อม Item/S/N รับเข้าจริง 2 สาขา, ขายบางส่วน, PR ครบ 3 สถานะ |
+| Seed data สาธิต (CR-009, ขยายโดย CR-012) | ✅ 60 สินค้า (6 หมวดหมู่ x 10) · **4 สาขาขนาดต่างกันจริง** (สำนักงานใหญ่ 60 รุ่น → สาขารังสิต 28 รุ่น) พร้อม S/N รับเข้าจริง, ขายบางส่วน, PR ครบ 3 สถานะจากหลายสาขา |
 | Purge ข้อมูลผู้ซื้อเก่า (NFR-PRIV-01) | ✅ ใช้งานได้ + test — `POST /api/admin/purge-old-buyer-data` manual purge ตาม retention policy |
 | Load test สาธารณะ (NFR-PERF-01) | ✅ 200 concurrent request จริง — P95 1472-1533ms (เป้าหมาย ≤2000ms) ผ่าน 2 รอบ ดู `docs/03-Architecture-Design.md` หัวข้อ 9.5 |
 | STRIDE mitigation verification | ✅ ทุกข้อมี automated test กำกับแล้ว (`test_stride_mitigations.py`) — ดู `docs/03-Architecture-Design.md` หัวข้อ 7 |
@@ -81,10 +81,15 @@ npm run dev
 > ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 57 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail, low-stock alert debounce, product image limit, STRIDE mitigation, buyer-data purge ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) **UI ทั้ง Branch และ Admin ถูกคลิกทดสอบจริงผ่าน browser** ครบ flow: login → เพิ่มสินค้า → รับสต็อก → ขาย (S/N lookup) → เช็คประกันสาธารณะ → สร้าง/ปฏิเสธคำขอสั่งซื้อ → ดู audit log → จัดการรูปสินค้า → ดู KPI dashboard พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
 
 ## Test Login (local dev, สร้างจาก `python -m scripts.seed`)
-| Role | Username | Password |
-|---|---|---|
-| Admin | `admin` | `admin1234` |
-| Branch Staff (สาขาสยาม) | `branch1` | `branch1234` |
+| Role | Username | Password | สังกัด | สต็อกตัวอย่าง |
+|---|---|---|---|---|
+| Admin | `admin` | `admin1234` | ทุกสาขา | — (ดูได้ทุกสาขา แต่**ขายเองไม่ได้**) |
+| Branch Staff | `hq1` | `hq1234` | สำนักงานใหญ่ | 60 รุ่น / ~191 ชิ้น |
+| Branch Staff | `branch1` | `branch1234` | สาขาสยาม | 55 รุ่น / ~112 ชิ้น |
+| Branch Staff | `branch2` | `rachada1234` | สาขารัชดา | 40 รุ่น / ~50 ชิ้น |
+| Branch Staff | `branch3` | `rangsit1234` | สาขารังสิต | 28 รุ่น / ~21 ชิ้น |
+
+> **ทำไม Admin ขายเองไม่ได้:** endpoint บันทึกขายดึง `branch_id` จาก token เสมอ (ไม่เชื่อค่าจาก client ตาม STRIDE-T) แต่ Admin ไม่สังกัดสาขาใด ระบบจึงไม่รู้ว่าจะบันทึกขายเข้าสาขาไหน — และเป็นการแยกหน้าที่ (separation of duties) ระหว่างคนอนุมัติ PR กับคนขายหน้าร้าน สำนักงานใหญ่ที่ต้องการขายจริงใช้บัญชี `hq1` ซึ่งสังกัดสาขาชัดเจน
 
 ## โครงสร้างโปรเจกต์
 ดูเหตุผลของโครงสร้างนี้ใน ADR-003 (`docs/03-Architecture-Design.md`)

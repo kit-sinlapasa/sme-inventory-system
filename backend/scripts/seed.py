@@ -123,6 +123,45 @@ STOCK_SCENARIOS = [
     (3, 5, 2),  # คงเหลือเท่ากับ reorder point พอดี
 ]
 
+# 4 สาขาที่มีขนาดต่างกันจริง — ไม่ให้ทุกสาขามีของเท่ากันเป๊ะเพราะไม่สมจริง
+# sku_coverage = สัดส่วน SKU ที่สาขานั้นสต็อก (สาขาเล็กไม่ได้มีของครบทุกรุ่น)
+# size = ตัวคูณจำนวนที่รับเข้า (สาขาใหญ่รับเข้าเยอะกว่าต่อรุ่น)
+# ทุกสาขามีพนักงานของตัวเอง รวมถึงสำนักงานใหญ่ — เดิมสำนักงานใหญ่มีของแต่ไม่มีใครขายได้เลย
+BRANCH_PROFILES = [
+    {
+        "name": "สำนักงานใหญ่",
+        "address": "กรุงเทพฯ",
+        "username": "hq1",
+        "password": "hq1234",
+        "sku_coverage": 1.00,  # คลังกลาง มีของครบทุกรุ่น
+        "size": 1.4,
+    },
+    {
+        "name": "สาขาสยาม",
+        "address": "สยามสแควร์",
+        "username": "branch1",
+        "password": "branch1234",  # คงไว้ตามเดิม เอกสาร/ภาพหน้าจอที่ทำไปแล้วอ้างถึงรหัสนี้
+        "sku_coverage": 0.90,
+        "size": 1.0,
+    },
+    {
+        "name": "สาขารัชดา",
+        "address": "ถนนรัชดาภิเษก กรุงเทพฯ",
+        "username": "branch2",
+        "password": "rachada1234",  # ตั้งชื่อตามสาขา อ่านแล้วไม่สับสนแบบ "branch2" + "1234"
+        "sku_coverage": 0.70,
+        "size": 0.7,
+    },
+    {
+        "name": "สาขารังสิต",
+        "address": "รังสิต ปทุมธานี",
+        "username": "branch3",
+        "password": "rangsit1234",
+        "sku_coverage": 0.50,  # สาขาใหม่ ยังสต็อกไม่ครบ
+        "size": 0.5,
+    },
+]
+
 
 def seed():
     db = SessionLocal()
@@ -132,28 +171,33 @@ def seed():
             print("Seed data มีอยู่แล้ว — ข้าม")
             return
 
-        hq = Branch(name="สำนักงานใหญ่", address="กรุงเทพฯ")
-        branch1 = Branch(name="สาขาสยาม", address="สยามสแควร์")
-        db.add_all([hq, branch1])
-        db.commit()
-        db.refresh(hq)
-        db.refresh(branch1)
-
         admin = User(
             username="admin",
             password_hash=pwd_context.hash("admin1234"),
             role="Admin",
-            branch_id=None,
+            branch_id=None,  # Admin ดูแลทุกสาขา จึงไม่สังกัดสาขาใด และ "ขายเองไม่ได้"
         )
-        branch_staff = User(
-            username="branch1",
-            password_hash=pwd_context.hash("branch1234"),
-            role="BranchStaff",
-            branch_id=branch1.id,
-        )
-        db.add_all([admin, branch_staff])
+        db.add(admin)
         db.commit()
-        db.refresh(branch_staff)
+        db.refresh(admin)
+
+        branches = []  # [(Branch, User, profile)]
+        for profile in BRANCH_PROFILES:
+            branch = Branch(name=profile["name"], address=profile["address"])
+            db.add(branch)
+            db.commit()
+            db.refresh(branch)
+
+            staff = User(
+                username=profile["username"],
+                password_hash=pwd_context.hash(profile["password"]),
+                role="BranchStaff",
+                branch_id=branch.id,
+            )
+            db.add(staff)
+            db.commit()
+            db.refresh(staff)
+            branches.append((branch, staff, profile))
 
         # --- 60 สินค้า (6 หมวดหมู่ x 10) พร้อมรูปตัวอย่าง ---
         products = []
@@ -182,10 +226,20 @@ def seed():
                 )
                 db.commit()
 
-                # --- รับเข้าสต็อก + ตั้ง reorder point + ขายบางส่วน ทั้ง 2 สาขา ---
-                for branch in (hq, branch1):
+                # --- รับเข้าสต็อก + ตั้ง reorder point + ขายบางส่วน แยกตามขนาดสาขา ---
+                for branch, staff, profile in branches:
                     combo_index += 1
-                    reorder_point, received, sold = STOCK_SCENARIOS[combo_index % len(STOCK_SCENARIOS)]
+
+                    # สาขาเล็กไม่ได้สต็อกครบทุกรุ่น — ข้ามบางรุ่นแบบ deterministic
+                    if rng.random() > profile["sku_coverage"]:
+                        continue
+
+                    reorder_point, base_received, base_sold = STOCK_SCENARIOS[
+                        combo_index % len(STOCK_SCENARIOS)
+                    ]
+                    # คูณด้วยขนาดสาขา แล้วปัดขึ้นอย่างน้อย 1 ชิ้น (สต็อกไว้แล้วต้องมีของจริง)
+                    received = max(1, round(base_received * profile["size"]))
+                    sold = min(base_sold, received)  # ขายเกินที่รับเข้าไม่ได้
 
                     branch_sku = BranchSKU(branch_id=branch.id, sku_id=product.id, reorder_point=reorder_point)
                     db.add(branch_sku)
@@ -226,61 +280,62 @@ def seed():
                         # CR-006 — ขายเป็นจุดเดียวที่ยิงแจ้งเตือนใหม่ได้ (ตรงกับ sales.py จริง)
                         evaluate_low_stock_alert(db, branch_id=branch.id, sku_id=product.id, may_alert=True)
 
-        # --- คำขอสั่งซื้อ (PR) จากสาขาสยาม ครบทุกสถานะ ---
-        pr_products = rng.sample(products, 8)
-        pending_products = pr_products[:3]
-        approved_products = pr_products[3:6]
-        rejected_products = pr_products[6:8]
+        # --- คำขอสั่งซื้อ (PR) — มาจากหลายสาขา ไม่ใช่สาขาเดียวเหมือนเดิม ---
+        # สาขาเล็กขอของบ่อยกว่าเพราะสต็อกน้อย (สำนักงานใหญ่เป็นคลังกลาง ไม่ต้องขอจากตัวเอง)
+        requesting = [(b, s, p) for b, s, p in branches if p["name"] != "สำนักงานใหญ่"]
+        reject_reasons = [
+            "งบประมาณไตรมาสนี้เต็มแล้ว",
+            "สินค้าตัวนี้ยอดขายช้า ขอชะลอก่อน",
+            "สาขายังมีของค้างสต็อกอยู่ รอระบายก่อน",
+        ]
+        reject_i = 0
+        counts = {"Pending": 0, "Approved": 0, "Rejected": 0}
 
-        for product in pending_products:
-            db.add(
-                PurchaseRequest(
-                    branch_id=branch1.id,
+        for branch, staff, profile in requesting:
+            # สาขายิ่งเล็ก ยิ่งขอเยอะ (size น้อย = ของน้อย = ต้องเติมบ่อย)
+            n_requests = {0.5: 5, 0.7: 4, 1.0: 3}.get(profile["size"], 3)
+            for product in rng.sample(products, n_requests):
+                status = rng.choice(["Pending", "Approved", "Rejected"])
+                pr = PurchaseRequest(
+                    branch_id=branch.id,
                     sku_id=product.id,
-                    quantity=rng.randint(2, 10),
-                    status="Pending",
-                    requested_by=branch_staff.id,
+                    quantity=rng.randint(2, 12),
+                    status=status,
+                    requested_by=staff.id,
+                    decided_by=None if status == "Pending" else admin.id,
+                    decided_at=None if status == "Pending" else func.now(),
+                    reject_reason=(
+                        reject_reasons[reject_i % len(reject_reasons)] if status == "Rejected" else None
+                    ),
                 )
-            )
-        db.commit()
+                if status == "Rejected":
+                    reject_i += 1
+                db.add(pr)
+                db.commit()
+                db.refresh(pr)
+                counts[status] += 1
 
-        for product in approved_products:
-            pr = PurchaseRequest(
-                branch_id=branch1.id,
-                sku_id=product.id,
-                quantity=rng.randint(2, 10),
-                status="Approved",
-                requested_by=branch_staff.id,
-                decided_by=admin.id,
-                decided_at=func.now(),
-            )
-            db.add(pr)
-            db.commit()
-            db.refresh(pr)
-            db.add(PurchaseOrder(pr_id=pr.id, created_by=admin.id))
-            db.commit()
-
-        reject_reasons = ["งบประมาณไตรมาสนี้เต็มแล้ว", "สินค้าตัวนี้ยอดขายช้า ขอชะลอก่อน"]
-        for product, reason in zip(rejected_products, reject_reasons, strict=True):
-            db.add(
-                PurchaseRequest(
-                    branch_id=branch1.id,
-                    sku_id=product.id,
-                    quantity=rng.randint(2, 10),
-                    status="Rejected",
-                    requested_by=branch_staff.id,
-                    decided_by=admin.id,
-                    decided_at=func.now(),
-                    reject_reason=reason,
-                )
-            )
-        db.commit()
+                # FR-010 — PR ที่อนุมัติแล้วต้องมี PO คู่กันเสมอ
+                if status == "Approved":
+                    db.add(PurchaseOrder(pr_id=pr.id, created_by=admin.id))
+                    db.commit()
 
         print("Seed สำเร็จ:")
-        print("  Admin      -> username: admin      password: admin1234")
-        print(f"  BranchStaff -> username: branch1    password: branch1234  (สาขา: {branch1.name})")
-        print(f"  สินค้า {len(products)} รายการ (6 หมวดหมู่ x 10), รับเข้าสต็อกทั้ง 2 สาขา")
-        print("  คำขอสั่งซื้อ: 3 Pending, 3 Approved (มี PO), 2 Rejected")
+        print("  Admin       -> username: admin      password: admin1234   (ดูแลทุกสาขา, ขายเองไม่ได้)")
+        for branch, staff, profile in branches:
+            stock = (
+                db.query(Item).filter(Item.branch_id == branch.id, Item.status == "InStock").count()
+            )
+            skus = db.query(BranchSKU).filter(BranchSKU.branch_id == branch.id).count()
+            print(
+                f"  BranchStaff -> username: {staff.username:<8} password: {profile['password']:<12}"
+                f" ({branch.name}: {skus} รุ่น / {stock} ชิ้นคงเหลือ)"
+            )
+        print(f"  สินค้า {len(products)} รายการ (6 หมวดหมู่ x 10) กระจายตามขนาดสาขา ไม่เท่ากันทุกสาขา")
+        print(
+            f"  คำขอสั่งซื้อ: {counts['Pending']} Pending, {counts['Approved']} Approved (มี PO), "
+            f"{counts['Rejected']} Rejected"
+        )
     finally:
         db.close()
 
