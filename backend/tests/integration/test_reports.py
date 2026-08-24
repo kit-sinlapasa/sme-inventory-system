@@ -328,5 +328,26 @@ def test_low_stock_kpi_reports_the_out_of_stock_subset(client, db, branch, produ
     assert len(stock) == 1 and stock[0]["sku_id"] == product.id
 
 
+def test_seed_wipe_restarts_id_sequences(db, branch, product):
+    """
+    `scripts.seed --reset` ต้องรีเซ็ตลำดับ id กลับไปเริ่มที่ 1 ไม่ใช่ลบแถวเฉย ๆ
+
+    ถ้าใช้ DELETE แทน TRUNCATE ... RESTART IDENTITY แถวจะหายจริงแต่ sequence เดินต่อ
+    reseed รอบถัดไปสินค้าจะได้ id 61-120 แทน 1-60 ผลที่เคยเกิดจริง: token ในเบราว์เซอร์
+    ชี้ไป user ที่ถูกลบแล้ว (401), sku_id บนหน้าจอชี้ไปสินค้าที่ไม่มีแล้ว (404)
+    และข้อมูลสาธิตไม่ reproducible เพราะ id เลื่อนทุกครั้ง
+    """
+    from app.models.product import Product
+    from scripts.seed import _wipe
+
+    assert product.id >= 1  # มีของอยู่ก่อน แล้ว sequence เดินไปแล้ว
+    _wipe(db)
+
+    fresh = Product(category="RAM", brand="After", model="Wipe", warranty_months=12)
+    db.add(fresh)
+    db.commit()
+    assert fresh.id == 1, f"id ควรเริ่มใหม่ที่ 1 แต่ได้ {fresh.id} — sequence ไม่ถูกรีเซ็ต"
+
+
 def test_reports_require_authentication(client):
     assert client.get("/api/reports/summary").status_code == 401

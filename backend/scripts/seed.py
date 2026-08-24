@@ -19,6 +19,7 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() != "utf-8":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 from passlib.context import CryptContext  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 
 from app.database import SessionLocal  # noqa: E402
 from app.models.branch import Branch  # noqa: E402
@@ -238,14 +239,22 @@ BRANCH_PROFILES = [
 
 def _wipe(db):
     """
-    ล้างทุกตารางตามลำดับ dependency ย้อนกลับ — ต้องเรียงจากตารางที่ถูกอ้างอิงน้อยสุดไปมากสุด
-    ไม่งั้นจะติด foreign key constraint · ใช้ metadata.sorted_tables เพื่อไม่ต้องไล่เรียงเอง
-    (ถ้ามีตารางใหม่เพิ่มเข้ามาทีหลังจะถูกล้างด้วยอัตโนมัติ ไม่ต้องกลับมาแก้ตรงนี้)
+    ล้างทุกตาราง **พร้อมรีเซ็ตลำดับ id กลับไปเริ่มที่ 1**
+
+    ต้องใช้ TRUNCATE ... RESTART IDENTITY ไม่ใช่ DELETE เพราะ DELETE ลบแถวอย่างเดียว
+    แต่ไม่แตะ sequence ของ id — reseed รอบถัดไปสินค้าจะได้ id 61-120 แทนที่จะเป็น 1-60
+    ผลที่ตามมาเคยเกิดจริงตอนทดสอบ:
+      - JWT ที่ยังค้างในเบราว์เซอร์ชี้ไป user id เดิมที่ถูกลบแล้ว -> 401 ทุก request
+      - sku_id ที่ค้างบนหน้าจอชี้ไปสินค้าที่ไม่มีแล้ว -> 404
+      - ที่สำคัญกว่านั้น: ข้อมูลสาธิตจะไม่ reproducible เพราะ id เลื่อนทุกครั้งที่ reseed
+        เอกสาร/ภาพหน้าจอที่อ้างถึงสินค้า id หนึ่ง ๆ จะไม่ตรงอีกต่อไป
+
+    CASCADE จำเป็นเพราะ TRUNCATE หลายตารางที่มี FK ต่อกันต้องสั่งพร้อมกันทั้งชุด
     """
     from app.database import Base
 
-    for table in reversed(Base.metadata.sorted_tables):
-        db.execute(table.delete())
+    names = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+    db.execute(text(f"TRUNCATE {names} RESTART IDENTITY CASCADE"))
     db.commit()
 
 
