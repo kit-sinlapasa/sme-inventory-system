@@ -20,6 +20,14 @@ import client from '../../api/client'
 const MAGNITUDE_COLOR = '#7a3ff1'
 const STATUS_COLORS = { Pending: '#fab219', Approved: '#0ca30c', Rejected: '#d03b3b' }
 
+const SORT_COLUMNS = {
+  branch: { label: 'สาขา', getValue: (r) => r.branch_id },
+  category: { label: 'หมวดหมู่', getValue: (r) => r.category },
+  model: { label: 'ยี่ห้อ / รุ่น', getValue: (r) => `${r.brand} ${r.model}` },
+  on_hand: { label: 'คงเหลือ', getValue: (r) => r.on_hand },
+  reorder_point: { label: 'จุดสั่งซื้อ', getValue: (r) => r.reorder_point ?? -1 },
+}
+
 export default function AdminDashboard() {
   const [stock, setStock] = useState([])
   const [products, setProducts] = useState([])
@@ -27,6 +35,9 @@ export default function AdminDashboard() {
   const [allPRs, setAllPRs] = useState([])
   const [branches, setBranches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('branch')
+  const [sortDir, setSortDir] = useState('asc')
 
   async function load() {
     setLoading(true)
@@ -63,6 +74,33 @@ export default function AdminDashboard() {
   const prByStatus = ['Pending', 'Approved', 'Rejected']
     .map((status) => ({ name: status, value: allPRs.filter((pr) => pr.status === status).length }))
     .filter((row) => row.value > 0)
+
+  const q = search.trim().toLowerCase()
+  const visibleStock = stock
+    .filter((r) => {
+      if (!q) return true
+      return (
+        r.category.toLowerCase().includes(q) ||
+        r.brand.toLowerCase().includes(q) ||
+        r.model.toLowerCase().includes(q) ||
+        `สาขา #${r.branch_id}`.toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => {
+      const va = SORT_COLUMNS[sortKey].getValue(a)
+      const vb = SORT_COLUMNS[sortKey].getValue(b)
+      const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+
+  function toggleSort(key) {
+    if (key === sortKey) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
 
   return (
     <div className="-m-6 p-6 bg-ink-bg min-h-[calc(100vh-57px)]">
@@ -102,40 +140,85 @@ export default function AdminDashboard() {
       {loading ? (
         <p className="text-ink-muted">กำลังโหลด...</p>
       ) : (
-        <div className="bg-ink-surface border border-ink-border rounded-xl overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-ink-muted">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">สาขา</th>
-                <th className="text-left px-4 py-3 font-medium">หมวดหมู่</th>
-                <th className="text-left px-4 py-3 font-medium">ยี่ห้อ / รุ่น</th>
-                <th className="text-right px-4 py-3 font-medium">คงเหลือ</th>
-                <th className="text-right px-4 py-3 font-medium">จุดสั่งซื้อ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stock.map((row, i) => {
-                const low = row.reorder_point != null && row.on_hand <= row.reorder_point
-                return (
-                  <tr
-                    key={`${row.sku_id}-${row.branch_id}-${i}`}
-                    className={`border-t border-ink-border ${low ? 'bg-[#fdf2f2]' : ''}`}
-                  >
-                    <td className="px-4 py-3 text-ink-text">สาขา #{row.branch_id}</td>
-                    <td className="px-4 py-3 text-ink-muted">{row.category}</td>
-                    <td className="px-4 py-3 text-ink-text">
-                      {row.brand} {row.model}
+        <>
+          <div className="flex items-center justify-between mb-3">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหาสาขา / หมวดหมู่ / ยี่ห้อ / รุ่น..."
+              className="w-full max-w-sm rounded-lg border border-ink-border bg-ink-surface px-3 py-2 text-sm text-ink-text placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-ink-accent/40"
+            />
+            <p className="text-xs text-ink-muted ml-3 whitespace-nowrap">
+              {visibleStock.length} / {stock.length} รายการ
+            </p>
+          </div>
+          <div className="bg-ink-surface border border-ink-border rounded-xl overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-ink-muted">
+                <tr>
+                  {Object.entries(SORT_COLUMNS).map(([key, col]) => (
+                    <SortableHeader
+                      key={key}
+                      label={col.label}
+                      active={sortKey === key}
+                      dir={sortDir}
+                      align={key === 'on_hand' || key === 'reorder_point' ? 'right' : 'left'}
+                      onClick={() => toggleSort(key)}
+                    />
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleStock.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-ink-muted">
+                      ไม่พบรายการที่ตรงกับ "{search}"
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-ink-text">{row.on_hand}</td>
-                    <td className="px-4 py-3 text-right text-ink-muted">{row.reorder_point ?? '—'}</td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  visibleStock.map((row, i) => {
+                    const low = row.reorder_point != null && row.on_hand <= row.reorder_point
+                    return (
+                      <tr
+                        key={`${row.sku_id}-${row.branch_id}-${i}`}
+                        className={`border-t border-ink-border ${low ? 'bg-[#fdf2f2]' : ''}`}
+                      >
+                        <td className="px-4 py-3 text-ink-text">สาขา #{row.branch_id}</td>
+                        <td className="px-4 py-3 text-ink-muted">{row.category}</td>
+                        <td className="px-4 py-3 text-ink-text">
+                          {row.brand} {row.model}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-ink-text">{row.on_hand}</td>
+                        <td className="px-4 py-3 text-right text-ink-muted">{row.reorder_point ?? '—'}</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
+  )
+}
+
+function SortableHeader({ label, active, dir, align, onClick }) {
+  return (
+    <th
+      onClick={onClick}
+      className={`px-4 py-3 font-medium cursor-pointer select-none hover:text-ink-text ${
+        align === 'right' ? 'text-right' : 'text-left'
+      }`}
+    >
+      <span className={align === 'right' ? 'inline-flex flex-row-reverse items-center gap-1' : 'inline-flex items-center gap-1'}>
+        {label}
+        <span className={`text-[10px] ${active ? 'text-ink-accent' : 'text-ink-border'}`}>
+          {active ? (dir === 'asc' ? '▲' : '▼') : '▲'}
+        </span>
+      </span>
+    </th>
   )
 }
 
