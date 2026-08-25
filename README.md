@@ -19,7 +19,7 @@ Repo: https://github.com/kit-sinlapasa/sme-inventory-system
 
 📄 **เอกสารประกอบทั้งหมดอยู่ใน [`docs/`](docs/)** — Requirement Package + RTM, Architecture & Design, AI Usage Log, Retrospective, Project Report, Usability Test และ [Release Notes](docs/07-Release-Notes.md)
 
-📦 **เวอร์ชันที่นำเสนอ: `v1.0.0`** · ⚖️ License: [MIT](LICENSE)
+📦 **เวอร์ชันที่นำเสนอ: `v1.1.0`** · ⚖️ License: [MIT](LICENSE)
 
 ## Tech Stack (ADR-003)
 - **Backend:** Python 3.11+ · FastAPI · SQLAlchemy 2.0 · Alembic · PostgreSQL
