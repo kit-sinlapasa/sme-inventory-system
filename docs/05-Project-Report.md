@@ -144,7 +144,7 @@ REST API ทุก endpoint แยกตาม resource (auth, public, products,
 | Auth | `python-jose` (JWT, HS256) · `passlib[bcrypt]` |
 | Rate Limiting | `slowapi` |
 | Frontend | React 18 + Vite + Tailwind CSS + React Router v7 |
-| Testing | Pytest + httpx (backend, 88 tests) |
+| Testing | Pytest + httpx (backend, 91 tests) |
 | CI/CD | GitHub Actions |
 | Deploy | Render.com (free tier — Postgres + 2 web service) |
 
@@ -375,6 +375,8 @@ Dependency ทั้งหมดเป็น license แบบ permissive (MIT/B
 **8b. บันทึกการขายสำเร็จ พร้อมคำนวณวันหมดประกันอัตโนมัติ**
 ![record sale success](screenshots/08b-branch-record-sale-success.png)
 
+> ⚠️ **เปิดเผยตรง ๆ:** ภาพนี้ต้องขายจริงถึงจะถ่ายได้ ระหว่างถ่ายภาพชุดนี้ (รันสคริปต์ซ้ำหลายรอบเพื่อแก้บั๊กของสคริปต์เอง) จึงมีรายการขายชื่อผู้ซื้อ **"สมชาย ทดสอบระบบ" เบอร์ 0899999999** เกิดขึ้นบนฐานข้อมูลสาธิตหลายรายการ ถ้าเปิดดูรายการขายของสาขาสยามแล้วเจอชื่อซ้ำ ๆ นี่คือที่มา — ไม่ใช่ข้อมูลลูกค้าจริงและไม่ใช่บั๊ก
+
 ### Edge Case / Error Handling (ตามที่ Deck 05 กำหนดว่า demo ต้องมีอย่างน้อย 1 จุด)
 
 **9. บันทึกการขายด้วย S/N ที่ไม่มีในสาขา — error message ชัดเจน ไม่ใช่ crash**
@@ -409,7 +411,7 @@ Edge case อื่นที่ verify แล้วจริงแต่ไม�
 
 ### Test Evidence
 
-- Full test suite: `backend/tests/` (88 tests, `python -m pytest -v` reproducible locally)
+- Full test suite: `backend/tests/` — จำนวนล่าสุดตรวจซ้ำได้ด้วย `python -m pytest -q` (ณ วันเขียน 91 ผ่านทั้งหมด) · ตัวเลขนี้เคยล้าสมัย 2 รอบเพราะฝังไว้เฉย ๆ จึงระบุคำสั่งกำกับไว้ให้ตรวจเองได้
 - Load test script: `backend/scripts/load_test.py`
 - CI logs: ดูที่ GitHub Actions run history ของ repo (เขียวทุกครั้งตั้งแต่สัปดาห์ 2)
 

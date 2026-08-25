@@ -18,7 +18,7 @@ NFR-REL-01 (กันขายสินค้าชิ้นเดียวซ�
 ระบบ live จริงบน Render (frontend + backend + Postgres) หลัง debug deploy failure 3 รอบจริง (Python version, bare `alembic` command) แต่ละรอบ verify ด้วย log จริงจาก Render CLI ไม่ใช่เดา — จุดที่ภูมิใจที่สุดคือรอบที่ 3 (bare `alembic` bug) ที่ **reproduce บั๊กเดิมบนเครื่อง local ได้ก่อนแก้** แทนที่จะเดาแล้วลอง push ใหม่ไปเรื่อย ๆ
 
 **1.4 Test coverage ครอบคลุมหลายมิติจริง**
-88 automated tests ครอบคลุม unit/integration/concurrency/security ไม่ใช่แค่ happy path — รวม STRIDE mitigation verification (5 tests), NFR-PRIV-01 purge (5 tests), และ load test แยกต่างหากสำหรับ NFR-PERF-01 ที่วัดผลจริงด้วย 200 concurrent request
+91 automated tests ครอบคลุม unit/integration/concurrency/security ไม่ใช่แค่ happy path — รวม STRIDE mitigation verification (5 tests), NFR-PRIV-01 purge (5 tests), และ load test แยกต่างหากสำหรับ NFR-PERF-01 ที่วัดผลจริงด้วย 200 concurrent request
 
 **1.5 AI Usage Log ที่ซื่อสัตย์จริง ไม่ใช่แค่ list ว่า "ใช้ AI ทำอะไรบ้าง"**
 มี entry ที่บันทึกความผิดพลาดของ AI ตรง ๆ อย่างน้อย 4 ครั้ง (สมมติผิดเรื่อง Hardware, เดาสาเหตุ deploy fail ผิดในรอบแรก, ทำ dependency ของ tooling พังชั่วคราว, บั๊ก debounce/seed script) — ตรงกับหลักที่ Deck 05 ต้องการ คือมีหลักฐานว่าทีม/AI **reject หรือแก้ output ที่ผิด** ไม่ใช่แค่ยอมรับทุกอย่างที่ AI สร้าง
