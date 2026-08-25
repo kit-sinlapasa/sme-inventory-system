@@ -310,18 +310,45 @@ Dependency ทั้งหมดเป็น license แบบ permissive (MIT/B
 
 **Test Login (สำหรับ local dev ที่ seed ข้อมูลไว้แล้ว):** Admin `admin`/`admin1234` · Branch Staff `branch1`/`branch1234`
 
-ภาพหน้าจอทั้งหมดด้านล่างถ่ายจริงจากระบบที่รันอยู่จริง (local, seed ข้อมูลจริง 60 สินค้า) ผ่าน Playwright ไม่ใช่ mockup — ไฟล์ต้นฉบับอยู่ที่ `docs/screenshots/`
+ภาพหน้าจอทั้งหมดด้านล่าง **ถ่ายจากระบบที่ deploy จริงบน production** (`sme-inventory-frontend.onrender.com`) ผ่าน Playwright ไม่ใช่ mockup และไม่ใช่เครื่อง dev — ไฟล์ต้นฉบับอยู่ที่ `docs/screenshots/` · ข้อมูลที่เห็นคือชุด CR-013 ที่มีประวัติย้อนหลัง 9 เดือน จึงมีกราฟแนวโน้มจริงให้อ่าน
 
 ### Happy Path
 
 **1. เช็คประกันสาธารณะ (FR-006, ไม่ต้อง login)**
 ![public warranty check](screenshots/01-public-warranty-check.png)
 
+**1b. เช็คประกันด้วย S/N ผิดรูปแบบ — ข้อความบอกรูปแบบที่ถูกต้อง (NFR-USE-01)**
+
+เดิมข้อความบอกแค่ "ไม่พบข้อมูล" ซึ่งเป็นทางตันสำหรับผู้ใช้ที่ไม่มีคนสอน — พบจากการเดิน task จริงตาม [06-Usability-Test](06-Usability-Test-NFR-USE-01.md)
+![warranty format help](screenshots/01b-public-warranty-format-help.png)
+
 **2. Login (FR-007)**
 ![login](screenshots/02-login.png)
 
-**3. Admin KPI Dashboard (FR-014) — เห็นสต็อกรวมทุกสาขา + ตัวเลขสรุป**
+**3. Dashboard สำนักงานใหญ่ (FR-014, CR-013) — KPI 4 ตัว + กราฟยอดขายรายวันแยกสาขา**
+
+การ์ดซ้ายสุดเทียบกับช่วงก่อนหน้าที่ยาวเท่ากัน (▲79%) · กราฟเส้นมีหนึ่งเส้นต่อหนึ่งสาขา แยกด้วยทั้งสีและลายเส้น คลิกชื่อสาขาเพื่อซ่อน/แสดงได้
 ![admin dashboard](screenshots/03-admin-dashboard-kpi.png)
+
+**3b. กราฟสินค้าขายดี + อัตราการระบายสต็อกรายสาขา**
+
+อัตราระบาย = ขายได้ ÷ (ขายได้ + คงเหลือ) เทียบข้ามขนาดสาขาได้ ต่างจากยอดขายดิบที่สาขาใหญ่ชนะตลอด — กราฟนี้มาแทน "สต็อกตามหมวดหมู่" เดิมที่ถูกยกเลิกใน CR-013
+![admin charts](screenshots/03b-admin-dashboard-charts.png)
+
+**3c. อายุสต็อก + ยอดขายตามวันในสัปดาห์**
+
+อายุสต็อกใช้ไล่เฉดสีเดียวอ่อน→เข้ม เพราะถังอายุมีลำดับในตัว · รูปแบบสุดสัปดาห์ (ศ/ส/อา สูงกว่า จ/อ ชัดเจน) คำนวณตามปฏิทินไทย
+![admin aging](screenshots/03c-admin-dashboard-aging.png)
+
+**3d. ตารางรายการเสี่ยงของขาด — เรียงตาม "จะหมดในกี่วัน" ไม่ใช่ยอดคงเหลือ**
+
+เหลือน้อยไม่เท่ากับเสี่ยง: เหลือ 2 ชิ้นแต่ขายเดือนละชิ้นคือปลอดภัย ส่วนเหลือ 8 ชิ้นแต่ขายวันละ 2 ชิ้นคือใกล้หมดจริง
+![stockout risk](screenshots/03d-admin-stockout-risk.png)
+
+**3e. รายละเอียดสินค้า — คลิกแถวในตารางสต็อกหรือคลิกแท่งในกราฟ**
+
+แสดงข้อมูลสินค้า รูป (FR-013) ยอดคงเหลือแยกสาขา และรายการ S/N รายชิ้นพร้อมสถานะ
+![product detail](screenshots/10-product-detail-modal.png)
 
 **4. จัดการรูปสินค้า (FR-013) — เพิ่ม/ลบได้สูงสุด 5 รูปต่อ SKU**
 ![product images](screenshots/04-admin-products-images.png)
@@ -332,8 +359,15 @@ Dependency ทั้งหมดเป็น license แบบ permissive (MIT/B
 **6. Audit Log จริง (FR-011) — เห็น actor/action/before-after จากการ approve/reject/receive จริงที่เพิ่งทำ**
 ![audit log](screenshots/06-admin-audit-log.png)
 
-**7. Branch KPI Dashboard (FR-014, FR-008) — เห็นเฉพาะสต็อกสาขาตัวเอง พร้อมไฮไลท์รายการใกล้หมด**
+**7. Dashboard สาขา (FR-014, FR-008, CR-013) — ชุดย่อยที่ตัดข้อมูลสาขาอื่นออก**
+
+ไม่มีตัวกรองสาขา ไม่มีกราฟเทียบสาขา และไม่มีตารางเทียบผลงาน เพราะสาขาไม่ควรเห็นตัวเลขของสาขาอื่น (NFR-SEC-02 บังคับที่ server อยู่แล้ว)
 ![branch dashboard](screenshots/07-branch-dashboard-kpi.png)
+
+**7b. ตารางเสี่ยงของขาดฝั่งสาขา — มีปุ่ม "ขอสั่งซื้อ" ที่เปิดฟอร์มพร้อมเลือกสินค้าไว้ให้**
+
+สาขาคือคนที่ลงมือขอเติมสต็อกจริง ปุ่มนี้จึงมีเฉพาะฝั่งสาขา ไม่มีในหน้าสำนักงานใหญ่
+![branch restock](screenshots/07b-branch-stockout-restock.png)
 
 **8. บันทึกการขาย (FR-004/005, ADR-002) — ค้นหาด้วย S/N สำเร็จ**
 ![record sale lookup](screenshots/08-branch-record-sale-lookup.png)
@@ -346,7 +380,7 @@ Dependency ทั้งหมดเป็น license แบบ permissive (MIT/B
 **9. บันทึกการขายด้วย S/N ที่ไม่มีในสาขา — error message ชัดเจน ไม่ใช่ crash**
 ![record sale error](screenshots/09-branch-record-sale-not-found-error.png)
 
-Edge case อื่นที่ verify แล้วจริงแต่ไม่มี screenshot แนบ (ดูใน AI Usage Log/test suite): ขายสินค้าเดิมซ้ำพร้อมกัน 10 thread → มีแค่ 1 สำเร็จ, ขาย item ที่ถูกขายไปแล้ว → 409, สาขาพยายามเข้าถึง endpoint ของ Admin → 403, S/N ปลอมที่หน้าเช็คประกันสาธารณะ → "ไม่พบข้อมูล"
+Edge case อื่นที่ verify แล้วจริงแต่ไม่มี screenshot แนบ (ดูใน AI Usage Log/test suite): ขายสินค้าเดิมซ้ำพร้อมกัน 10 thread → มีแค่ 1 สำเร็จ, ขาย item ที่ถูกขายไปแล้ว → 409, สาขาพยายามเข้าถึง endpoint ของ Admin → 403, S/N ปลอมที่หน้าเช็คประกันสาธารณะ → ข้อความบอกรูปแบบที่ถูกต้อง (ดูภาพ 1b)
 
 ---
 
