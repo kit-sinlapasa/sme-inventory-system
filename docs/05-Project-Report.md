@@ -285,7 +285,7 @@ Render Blueprint (`render.yaml`) — 3 service: Postgres DB, backend web service
 
 ---
 
-> 📦 **Version ที่นำเสนอ: `v1.0.0`** — รายละเอียด environment, deployment evidence, ขั้นตอน rollback
+> 📦 **Version ที่นำเสนอ: `v1.1.0`** — รายละเอียด environment, deployment evidence, ขั้นตอน rollback
 > และ known issues ทั้งหมดอยู่ใน **[07-Release-Notes.md](07-Release-Notes.md)**
 
 ## ⑧ Security & Responsible Design
