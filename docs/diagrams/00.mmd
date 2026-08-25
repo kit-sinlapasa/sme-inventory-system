@@ -1,0 +1,33 @@
+flowchart LR
+    A1(["บุคคลทั่วไป<br/>(ลูกค้าปลายทาง)"])
+    A2(["พนักงานสาขา"])
+    A3(["ผู้ดูแลระบบ<br/>สำนักงานใหญ่"])
+
+    subgraph SYS["ระบบจัดการสินค้าคงคลังและคำสั่งซื้อสำหรับธุรกิจ SME"]
+        U1(("ตรวจสอบ<br/>การรับประกัน"))
+        U2(("จัดการ<br/>ข้อมูลสินค้า"))
+        U3(("จัดการ<br/>สต็อกรายชิ้น"))
+        U4(("ดำเนินการขาย"))
+        U5(("จัดการ<br/>คำขอสั่งซื้อ"))
+        U6(("ติดตามและ<br/>รายงานผล"))
+    end
+
+    A4(["ระบบอีเมล<br/>ภายนอก"])
+
+    A1 --> U1
+    A2 --> U3
+    A2 --> U4
+    A2 --> U5
+    A2 --> U6
+    A3 --> U2
+    A3 --> U3
+    A3 --> U5
+    A3 --> U6
+    U6 -.->|แจ้งเตือนสต็อกต่ำ| A4
+
+    classDef sysbox fill:#FFFFFF,stroke:#000000,stroke-width:2px,color:#000000
+    classDef uc fill:#F2F2F2,stroke:#333333,stroke-width:1px,color:#000000
+    classDef actor fill:#FFFFFF,stroke:#000000,stroke-width:1.5px,color:#000000
+    class U1,U2,U3,U4,U5,U6 uc
+    class A1,A2,A3,A4 actor
+    class SYS sysbox
