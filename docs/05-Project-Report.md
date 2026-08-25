@@ -349,7 +349,7 @@ Apache-2.0 / LGPL-with-exceptions ซึ่งเข้ากันได้ท�
 
 ### Demo Flow — ลำดับการสาธิต
 
-> 🎤 **สคริปต์นำเสนอเต็มพร้อมจับเวลาทั้ง 5 ช่วง อยู่ที่ [08-Demo-Script.md](08-Demo-Script.md)**
+> 🎤 **สคริปต์นำเสนอ [08-Demo-Script.md](08-Demo-Script.md) · สไลด์ [09-Slides.html](09-Slides.html)**
 > — รวม checklist ก่อนขึ้นพูด ลำดับการคลิกจริง และคำตอบ Q&A ที่เตรียมไว้
 
 เส้นทางที่เดินได้ต่อเนื่องจริงในระบบเดียว ไม่ต้องสลับ environment:
