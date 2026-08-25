@@ -1,0 +1,41 @@
+flowchart TB
+    subgraph fe["Frontend (React + Vite)"]
+        pub["หน้าสาธารณะ<br/>WarrantyCheck"]
+        bch["โซนสาขา<br/>Dashboard · RecordSale · Requests"]
+        adm["โซนสำนักงานใหญ่<br/>Dashboard · Products · Receive · PR · Audit"]
+    end
+
+    subgraph api["Backend (FastAPI)"]
+        deps["deps.py — JWT + RBAC<br/>require_admin / require_branch_staff / require_any_role"]
+        subgraph routers["Routers"]
+            r1["public · auth"]
+            r2["items · stock · sales"]
+            r3["products · branch_sku<br/>purchase_requests · branches"]
+            r4["reports (8 endpoint)"]
+            r5["audit_log · admin"]
+        end
+        subgraph svc["Services"]
+            s1["stock_alerts<br/>(debounce การแจ้งเตือน)"]
+            s2["audit<br/>(บันทึกทุกการเปลี่ยนแปลง)"]
+            s3["email<br/>(ส่งจริง/log ตามการตั้งค่า)"]
+        end
+    end
+
+    db[("PostgreSQL<br/>10 ตาราง")]
+    mail["SMTP ภายนอก"]
+
+    pub --> r1
+    bch --> deps
+    adm --> deps
+    deps --> routers
+    r2 --> s1
+    r2 --> s2
+    r3 --> s2
+    r5 --> s2
+    s1 --> s3
+    s3 -.->|"ถ้าไม่ตั้งค่า SMTP จะ log แทน"| mail
+    routers --> db
+    svc --> db
+
+    style deps fill:#fdf2f2,stroke:#d03b3b
+    style db fill:#eaf2fd,stroke:#2a78d6

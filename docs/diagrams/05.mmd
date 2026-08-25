@@ -1,0 +1,35 @@
+flowchart LR
+    actor1(["บุคคลทั่วไป"])
+    actor2(["พนักงานสาขา<br/>Branch Staff"])
+    actor3(["ผู้ดูแลระบบ<br/>Admin"])
+
+    subgraph SYS["ระบบ SME Inventory & Order Management"]
+        UC1((ตรวจสอบสถานะ<br/>การรับประกัน))
+        UC2((เข้าสู่ระบบ))
+        UC3((บันทึกการขาย))
+        UC4((ดูสต็อกของสาขา))
+        UC5((สร้างคำขอสั่งซื้อ))
+        UC6((จัดการสินค้า / SKU))
+        UC7((รับสินค้าเข้าสต็อก))
+        UC8((อนุมัติ/ปฏิเสธ<br/>คำขอสั่งซื้อ))
+        UC9((ดู Audit Log))
+        UC10((จัดการรูปสินค้า))
+        UC11((ลบข้อมูลผู้ซื้อ<br/>ที่เกินระยะเก็บ))
+        UC12((ดู KPI Dashboard))
+    end
+
+    actor1 --> UC1
+    actor2 --> UC2
+    actor2 --> UC3
+    actor2 --> UC4
+    actor2 --> UC5
+    actor2 --> UC12
+    actor3 --> UC2
+    actor3 --> UC4
+    actor3 --> UC6
+    actor3 --> UC7
+    actor3 --> UC8
+    actor3 --> UC9
+    actor3 --> UC10
+    actor3 --> UC11
+    actor3 --> UC12

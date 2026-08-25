@@ -1,0 +1,20 @@
+flowchart TB
+    customer["👤 ลูกค้าทั่วไป<br/>(ไม่ต้องล็อกอิน)"]
+    staff["👤 พนักงานสาขา<br/>BranchStaff"]
+    admin["👤 สำนักงานใหญ่<br/>Admin"]
+
+    subgraph boundary["ขอบเขตระบบที่เราพัฒนา"]
+        sys["SME Inventory &amp; Order Management<br/>─────────────<br/>Product · Stock · Order<br/>Customer · Alert · Report"]
+    end
+
+    smtp["📧 SMTP Server<br/>(ภายนอก)"]
+    render["☁️ Render<br/>PostgreSQL + Hosting"]
+
+    customer -->|"เช็คประกันด้วย S/N"| sys
+    staff -->|"บันทึกขาย · ขอสั่งซื้อ · ดูสต็อกสาขา"| sys
+    admin -->|"จัดการสินค้า · รับสต็อก · อนุมัติ PR · ดูรายงาน"| sys
+    sys -->|"แจ้งเตือนสต็อกใกล้หมด"| smtp
+    sys -->|"อ่าน/เขียนข้อมูล"| render
+
+    style boundary fill:#eaf2fd,stroke:#2a78d6,stroke-width:2px
+    style sys fill:#fff,stroke:#2a78d6

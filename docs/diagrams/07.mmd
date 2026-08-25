@@ -1,0 +1,15 @@
+flowchart TD
+    Start([เริ่มต้น]) --> A[พนักงานสาขาสร้าง<br/>คำขอสั่งซื้อ PR]
+    A --> B[สถานะ: Pending]
+    B --> C{Admin ตรวจสอบ}
+    C -->|อนุมัติ| D["Conditional UPDATE:<br/>status Pending to Approved"]
+    D --> E{อัปเดตสำเร็จ?}
+    E -->|ใช่ rowcount=1| F[สร้าง Purchase Order<br/>อัตโนมัติ]
+    E -->|ไม่ rowcount=0<br/>มีคนตัดสินใจไปแล้ว| G[คืน 409 Conflict]
+    F --> H([จบ: PR มี PO แล้ว])
+    C -->|ปฏิเสธ| I{กรอกเหตุผลหรือยัง?}
+    I -->|ยัง| J["บังคับกรอกเหตุผล<br/>(ปุ่มยืนยัน disabled)"]
+    J --> I
+    I -->|กรอกแล้ว| K["Conditional UPDATE:<br/>status Pending to Rejected"]
+    K --> L([จบ: PR ถูกปฏิเสธ<br/>พร้อมเหตุผล])
+    G --> M([จบ: ไม่มีการเปลี่ยนแปลง])

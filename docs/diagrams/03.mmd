@@ -1,0 +1,85 @@
+erDiagram
+    BRANCH ||--o{ ITEM : "ที่ตั้งปัจจุบัน"
+    BRANCH ||--o{ USER : "สังกัด"
+    BRANCH ||--o{ BRANCH_SKU : "ตั้งค่า reorder"
+    BRANCH ||--o{ SALE : "ขายที่"
+    BRANCH ||--o{ PURCHASE_REQUEST : "สร้างคำขอ"
+    PRODUCT ||--o{ ITEM : "เป็นรุ่นของ"
+    PRODUCT ||--o{ BRANCH_SKU : "ถูกตั้งค่าที่"
+    PRODUCT ||--o{ PURCHASE_REQUEST : "สั่งซื้อ"
+    ITEM ||--o| SALE : "ถูกขายเป็น"
+    USER ||--o{ AUDIT_LOG : "กระทำโดย"
+    PURCHASE_REQUEST ||--o| PURCHASE_ORDER : "อนุมัติเป็น"
+
+    USER {
+        int id PK
+        string username
+        string password_hash
+        string role "Admin | BranchStaff"
+        int branch_id FK "null สำหรับ Admin"
+    }
+    BRANCH {
+        int id PK
+        string name
+        string address
+    }
+    PRODUCT {
+        int id PK
+        string category "RAM | Mainboard | CPU"
+        string brand
+        string model
+        string spec
+        int warranty_months
+    }
+    BRANCH_SKU {
+        int id PK
+        int branch_id FK
+        int sku_id FK
+        int reorder_point "แก้ตาม CR-002"
+    }
+    ITEM {
+        int id PK
+        int sku_id FK
+        string serial_number UK
+        int branch_id FK
+        string status "InStock|Sold"
+        datetime received_at
+    }
+    SALE {
+        int id PK
+        int item_id FK "unique - ขายได้ครั้งเดียว"
+        string buyer_name
+        string buyer_phone
+        int branch_id FK
+        datetime sold_at
+        datetime warranty_expires_at "คำนวณ = sold_at + warranty_months"
+        string idempotency_key UK
+    }
+    PURCHASE_REQUEST {
+        int id PK
+        int branch_id FK
+        int sku_id FK
+        int quantity
+        string status "Pending|Approved|Rejected"
+        int requested_by FK
+        datetime requested_at
+        int decided_by FK
+        datetime decided_at
+        string reject_reason
+    }
+    PURCHASE_ORDER {
+        int id PK
+        int pr_id FK UK
+        int created_by FK
+        datetime created_at
+    }
+    AUDIT_LOG {
+        int id PK
+        int actor_user_id FK
+        string action
+        string entity_type
+        int entity_id
+        json before_value
+        json after_value
+        datetime occurred_at
+    }

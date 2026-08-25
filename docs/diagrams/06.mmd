@@ -1,0 +1,18 @@
+sequenceDiagram
+    participant S1 as พนักงาน A (เธรด 1)
+    participant S2 as พนักงาน B (เธรด 2)
+    participant API as FastAPI POST /api/sales
+    participant DB as PostgreSQL (items, sales)
+
+    Note over S1,S2: ทั้งคู่พยายามขาย Item S/N เดียวกันพร้อมกัน
+    par คำขอพร้อมกัน
+        S1->>API: POST /api/sales + Idempotency-Key A
+        S2->>API: POST /api/sales + Idempotency-Key B
+    end
+    API->>DB: UPDATE items SET status='Sold'<br/>WHERE id=? AND status='InStock' (เธรด 1)
+    API->>DB: UPDATE items SET status='Sold'<br/>WHERE id=? AND status='InStock' (เธรด 2)
+    DB-->>API: rowcount=1 (เธรด 1 ชนะ)
+    DB-->>API: rowcount=0 (เธรด 2 แพ้ race)
+    API->>DB: INSERT INTO sales (...) (เธรด 1 เท่านั้น)
+    API-->>S1: 201 Created — บันทึกการขายสำเร็จ
+    API-->>S2: 409 Conflict — "สินค้านี้ถูกขายไปแล้ว"
