@@ -17,7 +17,7 @@ Repo: https://github.com/kit-sinlapasa/sme-inventory-system
 
 > ⚠️ Free tier ของ Render spin down หลังไม่มีคนใช้ 15 นาที — request แรกหลังจากนั้นอาจช้า ~30-60 วินาที (ปกติ ไม่ใช่บั๊ก)
 
-📄 **เอกสารประกอบทั้งหมดอยู่ใน [`docs/`](docs/)** — Requirement Package + RTM, Architecture & Design, AI Usage Log, Retrospective, Project Report, Usability Test, [Release Notes](docs/07-Release-Notes.md) และ [สคริปต์นำเสนอ](docs/08-Demo-Script.md)
+📄 **เอกสารประกอบทั้งหมดอยู่ใน [`docs/`](docs/)** — Requirement Package + RTM, Architecture & Design, AI Usage Log, Retrospective, Project Report, Usability Test, [Release Notes](docs/07-Release-Notes.md) และ [สคริปต์นำเสนอ](docs/08-Demo-Script.md) + [สไลด์](docs/09-Slides.html)
 
 📦 **เวอร์ชันที่นำเสนอ: `v1.1.0`** · ⚖️ License: [MIT](LICENSE)
 

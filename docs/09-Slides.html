@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SME Inventory — Final Defense</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ── โทเคนสีดึงมาจากระบบจริงของโปรเจกต์ (frontend/tailwind.config.js) โดยตั้งใจ
+      เพื่อให้สไลด์กับหน้าจอที่สาธิตสดดูเป็นชิ้นเดียวกัน ไม่ใช่คนละงาน
+      ยกเว้น accent ที่ใช้ #2168c4 แทน #2a78d6 — เป็นเฉดเดียวกันแต่ contrast 5.32:1
+      ซึ่งโปรเจกต์บันทึกไว้เองว่าเป็นตัวที่ผ่าน AA เต็ม เหมาะกับการฉายโปรเจกเตอร์กว่า ── */
+:root{
+  --ground:#f9f9f7; --surface:#fcfcfb; --border:#e5e7eb;
+  --text:#0b0b0b; --muted:#5f5f5f;
+  --accent:#2168c4; --accent-soft:#eaf2fd;
+  --good:#0a7d0a; --warn:#a3690f; --crit:#d03b3b;
+  --grad:linear-gradient(135deg,#1f6fd0 0%,#7b3fc4 55%,#b0399c 100%);
+  --sans:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"Cascadia Code",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--ground); color:var(--text);
+  font-family:var(--sans); font-weight:400;
+  overflow:hidden;
+}
+.deck{position:relative;height:100vh;width:100vw}
+.slide{
+  position:absolute; inset:0;
+  display:none; flex-direction:column;
+  padding:clamp(2rem,5vh,4rem) clamp(2.5rem,6vw,7rem);
+  opacity:0; transition:opacity .18s ease;
+}
+.slide.on{display:flex;opacity:1}
+@media (prefers-reduced-motion:reduce){.slide{transition:none}}
+
+/* หัวสไลด์: ป้ายช่วง + งบเวลา — เวลาเป็นข้อมูลจริงตามเกณฑ์ ไม่ใช่ของประดับ */
+.bar{display:flex;align-items:baseline;gap:.75rem;margin-bottom:auto;flex-wrap:wrap}
+.chip{
+  font-size:.75rem; font-weight:600; letter-spacing:.04em; color:var(--accent);
+  background:var(--accent-soft); padding:.32rem .7rem; border-radius:999px;
+}
+.budget{font-size:.75rem;color:var(--muted);letter-spacing:.02em;font-weight:500}
+.body{margin:auto 0;display:flex;flex-direction:column;gap:clamp(1rem,2.4vh,1.9rem)}
+
+h1{font-size:clamp(2.4rem,6.4vw,4.6rem);font-weight:700;line-height:1.06;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:clamp(1.75rem,4vw,3rem);font-weight:600;line-height:1.15;letter-spacing:-.015em;text-wrap:balance}
+h3{font-size:clamp(1rem,1.6vw,1.3rem);font-weight:600;line-height:1.3}
+p,li{font-size:clamp(.95rem,1.5vw,1.22rem);line-height:1.62;max-width:62ch}
+.lede{font-size:clamp(1.05rem,1.9vw,1.5rem);color:var(--muted);max-width:56ch;line-height:1.5}
+.sm{font-size:clamp(.8rem,1.15vw,.95rem);color:var(--muted);line-height:1.55;max-width:70ch}
+strong{font-weight:600}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* สไลด์คั่นช่วง ใช้ gradient เดียวกับการ์ด KPI ในระบบจริง */
+.divider{background:var(--grad);color:#fff}
+.divider .chip{background:rgba(255,255,255,.22);color:#fff}
+.divider .budget{color:#fff}
+.divider h1,.divider h2,.divider p,.divider .lede{color:#fff}
+.divider .rail i{background:rgba(255,255,255,.35)}
+.divider .rail i.done{background:#fff}
+.divider .num{color:#fff}
+
+.num{font-family:var(--mono);font-size:clamp(3rem,9vw,7rem);font-weight:600;line-height:.9;letter-spacing:-.04em}
+
+.grid{display:grid;gap:clamp(.8rem,1.8vw,1.5rem)}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))}
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:.85rem;
+  padding:clamp(.9rem,1.7vw,1.4rem);display:flex;flex-direction:column;gap:.4rem;
+}
+.card .k{font-family:var(--mono);font-size:clamp(1.5rem,3.4vw,2.5rem);font-weight:600;line-height:1;letter-spacing:-.02em}
+.card .l{font-size:clamp(.78rem,1.1vw,.92rem);color:var(--muted);line-height:1.4}
+.card.hi{border-color:var(--accent);background:var(--accent-soft)}
+.card.hi .k{color:var(--accent)}
+
+ul{list-style:none;display:flex;flex-direction:column;gap:.6rem}
+ul li{position:relative;padding-left:1.4rem}
+ul li::before{
+  content:"";position:absolute;left:0;top:.72em;
+  width:.42rem;height:.42rem;border-radius:2px;background:var(--accent)
+}
+ul.warn li::before{background:var(--warn)}
+
+table{border-collapse:collapse;width:100%;font-size:clamp(.82rem,1.2vw,1.02rem)}
+th,td{text-align:left;padding:.55rem .7rem;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tw{overflow-x:auto}
+
+.tag{font-size:.74rem;font-weight:600;padding:.18rem .5rem;border-radius:.3rem;white-space:nowrap}
+.tag.ok{background:#e8f5e9;color:var(--good)}
+.tag.no{background:#fdf2f2;color:var(--crit)}
+.tag.mid{background:#fdf6e8;color:var(--warn)}
+
+/* แถบบอกตำแหน่ง 5 ช่วง — สะท้อนลำดับจริงของการนำเสนอ */
+.rail{display:flex;gap:.35rem;margin-top:auto;padding-top:1.2rem}
+.rail i{height:3px;flex:1;background:var(--border);border-radius:2px;transition:background .18s}
+.rail i.done{background:var(--accent)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:.7rem}
+.foot span{font-size:.74rem;color:var(--muted);line-height:1.4}
+.foot span:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.divider .foot span{color:rgba(255,255,255,.85)}
+
+.hint{
+  position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);
+  font-size:.72rem;color:var(--muted);
+  background:var(--surface);border:1px solid var(--border);
+  padding:.35rem .8rem;border-radius:999px;opacity:.85;
+}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+@media print{body{overflow:visible}.slide{display:flex!important;opacity:1!important;position:relative;height:100vh;page-break-after:always}.hint{display:none}}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- 0 ───────────────────────────────────────────────── -->
+<section class="slide divider">
+  <div class="bar"><span class="chip">NC221 · Final Project</span></div>
+  <div class="body">
+    <h1>SME Inventory &amp;<br>Order Management</h1>
+    <p class="lede">ระบบจัดการสต็อกอะไหล่คอมพิวเตอร์<strong>รายชิ้น</strong> พร้อมตรวจสอบการรับประกัน</p>
+    <p class="mono" style="font-size:.85rem;opacity:.9">v1.1.0 · sme-inventory-frontend.onrender.com</p>
+  </div>
+  <div class="rail"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="foot"><span>มหาวิทยาลัยหอการค้าไทย · 12 นาที + Q&amp;A 5 นาที</span><span>1 / 14</span></div>
+</section>
+
+<!-- 1 ───────────────────────────────────────────────── -->
+<section class="slide divider">
+  <div class="bar"><span class="chip">ช่วงที่ 1</span><span class="budget">2:00</span></div>
+  <div class="body">
+    <div class="num">01</div>
+    <h2>Problem &amp; Requirement</h2>
+  </div>
+  <div class="rail"><i class="done"></i><i></i><i></i><i></i><i></i></div>
+  <div class="foot"><span>ปัญหา · Stakeholder · Key FR/NFR · User Story</span><span>2 / 14</span></div>
+</section>
+
+<section class="slide">
+  <div class="bar"><span class="chip">ช่วงที่ 1</span><span class="budget">ปัญหา</span></div>
+  <div class="body">
+    <h2>ของที่รับประกันรายชิ้น <span style="color:var(--accent)">นับเป็นจำนวนไม่ได้</span></h2>
+    <p>RAM ตัวนี้ซื้อเมื่อไร ยังอยู่ในประกันไหม — ต้องติดตามทีละชิ้นด้วยหมายเลขซีเรียล</p>
+    <div class="grid g3">
+      <div class="card"><div class="l">ลูกค้าทั่วไป</div><p class="sm">เช็คประกันเองได้ ไม่ต้องโทรถามร้าน</p></div>
+      <div class="card"><div class="l">พนักงานสาขา</div><p class="sm">ขายหน้าร้าน ขอเติมสต็อก</p></div>
+      <div class="card"><div class="l">สำนักงานใหญ่</div><p class="sm">คุมสต็อกรวม อนุมัติการสั่งซื้อ</p></div>
+    </div>
+    <p class="sm"><strong>ความเสี่ยงที่แพงที่สุด:</strong> ถ้าจ่าย S/N เดียวกันซ้ำสองครั้ง ประวัติประกันของลูกค้าพังทันที</p>
+  </div>
+  <div class="rail"><i class="done"></i><i></i><i></i><i></i><i></i></div>
+  <div class="foot"><span>Stakeholder 3 กลุ่ม</span><span>3 / 14</span></div>
+</section>
+
+<section class="slide">
+  <div class="bar"><span class="chip">ช่วงที่ 1</span><span class="budget">Key FR / NFR</span></div>
+  <div class="body">
+    <h2>4 ข้อที่เป็นแกน จาก 15 FR · 8 NFR</h2>
+    <div class="tw"><table>
+      <thead><tr><th>รหัส</th><th>สาระ</th></tr></thead>
+      <tbody>
+        <tr><td class="n">FR-002/003</td><td>สต็อก<strong>รายชิ้นมี S/N</strong> ไม่ใช่การนับจำนวน — เป็นรากของทั้งระบบ</td></tr>
+        <tr><td class="n">FR-004/005</td><td>บันทึกขายแล้วคำนวณวันหมดประกันอัตโนมัติจากวันขายจริง</td></tr>
+        <tr><td class="n" style="color:var(--accent)">NFR-REL-01</td><td><strong>หนึ่งชิ้นขายได้ครั้งเดียว แม้มีคนกดพร้อมกัน</strong> ← ความท้าทายหลัก</td></tr>
+        <tr><td class="n">NFR-SEC-02</td><td>สาขาเห็นได้เฉพาะข้อมูลสาขาตัวเอง บังคับที่ server ไม่ใช่ซ่อนปุ่ม</td></tr>
+      </tbody>
+    </table></div>
+    <p class="sm"><strong>US-01</strong> — ในฐานะเจ้าของอุปกรณ์ ฉันอยากกรอก S/N เพื่อเช็คประกัน เพื่อจะได้ไม่ต้องโทรถามร้าน</p>
+  </div>
+  <div class="rail"><i class="done"></i><i></i><i></i><i></i><i></i></div>
+  <div class="foot"><span>AC เขียนแบบ Given-When-Then ครบทุก User Story</span><span>4 / 14</span></div>
+</section>
+
+<!-- 2 ───────────────────────────────────────────────── -->
+<section class="slide divider">
+  <div class="bar"><span class="chip">ช่วงที่ 2</span><span class="budget">3:00</span></div>
+  <div class="body">
+    <div class="num">02</div>
+    <h2>Architecture &amp;<br>Engineering Evidence</h2>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i></i><i></i><i></i></div>
+  <div class="foot"><span>Architecture · Data/API · Git/PR · Test · CI/CD</span><span>5 / 14</span></div>
+</section>
+
+<section class="slide">
+  <div class="bar"><span class="chip">ช่วงที่ 2</span><span class="budget">ADR-002 · หัวใจของงาน</span></div>
+  <div class="body">
+    <h2>ถ้าพนักงาน 2 คนกดขาย S/N เดียวกันพร้อมกัน?</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3>วิธีแก้</h3>
+        <p class="sm">Conditional UPDATE <span class="mono">WHERE status='InStock'</span> แล้วเช็ค <span class="mono">rowcount</span> — ใครได้ 1 คนนั้นขายได้ · การเช็คกับการเขียนเป็น atomic ในคำสั่งเดียว</p>
+      </div>
+      <div class="card">
+        <h3>อีกชั้นหนึ่ง</h3>
+        <p class="sm"><strong>Idempotency-Key</strong> กันคนละปัญหา — เน็ตช้าแล้วผู้ใช้กดซ้ำ ไม่ให้กลายเป็นการขาย 2 รายการ</p>
+      </div>
+    </div>
+    <div class="card hi">
+      <div class="k">10 → 1</div>
+      <div class="l">ยิง 10 thread แข่งกันขายชิ้นเดียวกันบน <strong>Postgres จริง</strong> สำเร็จได้ 1 เสมอ ที่เหลือได้ 409 — ไม่ใช่ mock</div>
+    </div>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i></i><i></i><i></i></div>
+  <div class="foot"><span>pattern เดียวกันใช้ซ้ำกับ PR approve/reject</span><span>6 / 14</span></div>
+</section>
+
+<section class="slide">
+  <div class="bar"><span class="chip">ช่วงที่ 2</span><span class="budget">หลักฐานทางวิศวกรรม</span></div>
+  <div class="body">
+    <h2>ตัวเลขที่ตรวจสอบได้จาก repo</h2>
+    <div class="grid g3">
+      <div class="card hi"><div class="k">122</div><div class="l">automated tests<br>ครบ 4 ระดับ</div></div>
+      <div class="card"><div class="k">19</div><div class="l">Pull Request<br>CI เขียวทุกใบ</div></div>
+      <div class="card"><div class="k">15</div><div class="l">Change Request<br>มี Impact Analysis</div></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>ระดับ</th><th>จำนวน</th><th>ทดสอบอะไร</th></tr></thead>
+      <tbody>
+        <tr><td>Unit</td><td class="n">14</td><td>ตรรกะบริสุทธิ์ ไม่แตะ DB — ขอบเขตสาขา, ช่วงเวลารายงาน</td></tr>
+        <tr><td>Integration</td><td class="n">95</td><td>ยิงผ่าน API จริงบน Postgres จริง</td></tr>
+        <tr><td>Acceptance</td><td class="n">9</td><td>เขียนตาม Given-When-Then ของ User Story โดยตรง</td></tr>
+        <tr><td>Concurrency</td><td class="n">4</td><td>10 thread แข่งกันบน DB จริง</td></tr>
+      </tbody>
+    </table></div>
+    <p class="sm"><strong>เปิด branch protection แล้ว</strong> — push ตรงเข้า <span class="mono">main</span> ไม่ได้เลยแม้เป็นเจ้าของ repo · แต่ <strong>PR ทุกใบ reviews = 0</strong> เพราะทำคนเดียว ได้ branch hygiene กับ CI gate แต่ยังไม่ใช่ code review</p>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i></i><i></i><i></i></div>
+  <div class="foot"><span>Diagrams · ADR-001/002/003 · RTM trace ครบ</span><span>7 / 14</span></div>
+</section>
+
+<!-- 3 ───────────────────────────────────────────────── -->
+<section class="slide divider">
+  <div class="bar"><span class="chip">ช่วงที่ 3</span><span class="budget">4:00 · ยาวที่สุด</span></div>
+  <div class="body">
+    <div class="num">03</div>
+    <h2>Live Product Demo</h2>
+    <p class="lede">สลับไปเบราว์เซอร์ — ห้ามใช้วิดีโอแทน</p>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i></div>
+  <div class="foot"><span>happy path + edge case อย่างน้อย 1 จุด</span><span>8 / 14</span></div>
+</section>
+
+<section class="slide">
+  <div class="bar"><span class="chip">ช่วงที่ 3</span><span class="budget">ลำดับการกด</span></div>
+  <div class="body">
+    <h2>เส้นทางสาธิต</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Happy path · 2:30</h3>
+        <ul>
+          <li>หน้าสาธารณะ → วาง S/N ที่ขายแล้ว → <strong>ไม่มีชื่อ/เบอร์ผู้ซื้อโผล่</strong></li>
+          <li>login <span class="mono">admin</span> → ภาพรวมธุรกิจ → กด <strong>90 วัน</strong> ตัวเลขเปลี่ยนจริง</li>
+          <li>ตารางเสี่ยงของขาด → คลิกแถว → เห็น S/N รายชิ้น</li>
+          <li>login <span class="mono">branch1</span> → คลิก S/N → บันทึกขาย → ได้วันหมดประกัน</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Edge case · 1:30</h3>
+        <ul class="warn">
+          <li><strong>Admin ขายเองไม่ได้</strong> — ไม่มีเมนู และยิง API ตรงก็ได้ 403</li>
+          <li>คนอนุมัติ PR กับคนขายหน้าร้านต้องแยกกัน</li>
+          <li>ไม่ได้แค่ซ่อนปุ่ม — มี test คุมไว้</li>
+        </ul>
+      </div>
+    </div>
+    <p class="sm"><strong>ทุกขั้นทดสอบกับ production จริงแล้ว 9/9</strong> ก่อนขึ้นนำเสนอ · ถ้าเน็ตมีปัญหา → ข้ามไปช่วงที่ 4 ก่อนแล้วกลับมา</p>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i></div>
+  <div class="foot"><span>ปลุก Render ก่อนขึ้นพูด 10 นาที</span><span>9 / 14</span></div>
+</section>
+
+<!-- 4 ───────────────────────────────────────────────── -->
+<section class="slide divider">
+  <div class="bar"><span class="chip">ช่วงที่ 4</span><span class="budget">1:00</span></div>
+  <div class="body">
+    <div class="num">04</div>
+    <h2>AI Usage Disclosure</h2>
+    <p class="lede">AI ช่วยอะไร · ทีมตรวจอย่างไร · มีอะไรที่ reject</p>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i></div>
+  <div class="foot"><span>บันทึก 47 entry · 7 คอลัมน์ตามเกณฑ์</span><span>10 / 14</span></div>
+</section>
+
+<section class="slide">
+  <div class="bar"><span class="chip">ช่วงที่ 4</span><span class="budget">สิ่งที่ reject จาก AI</span></div>
+  <div class="body">
+    <h2>ไม่เชื่อเพราะอ่านแล้วดูดี <span style="color:var(--accent)">แต่เพราะรันแล้ววัด</span></h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3><span class="tag no">Rejected</span> ตีความ requirement ผิด</h3>
+        <p class="sm">AI เข้าใจว่า "Hardware" คือเครื่องมือช่าง แล้วออกแบบ data model แบบนับจำนวน — ทีมปฏิเสธ ให้ทำใหม่เป็น serialized inventory ซึ่งใช้ตลอดโครงงาน</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag no">Rejected</span> test ที่ fail ไม่ได้</h3>
+        <p class="sm">AI เขียน test กัน N+1 แล้วบอกว่าผ่าน — เราเอาไปรันกับโค้ดเก่าที่ยังมีบั๊ก <strong>แล้วมันไม่ fail</strong> เพราะดักฟัง database engine ผิดตัว</p>
+      </div>
+    </div>
+    <div class="card hi">
+      <div class="l"><strong>test ที่ผ่านโดยไม่มีทาง fail = test ที่ไม่ได้ทดสอบอะไรเลย</strong> — บันทึกความผิดพลาดของ AI ไว้ 7 ข้อในเอกสาร ไม่ได้เขียนแต่ด้านที่ดี</div>
+    </div>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i></div>
+  <div class="foot"><span>ไม่มี password / API key / ข้อมูลจริงเข้า AI — สแกน git history แล้ว</span><span>11 / 14</span></div>
+</section>
+
+<!-- 5 ───────────────────────────────────────────────── -->
+<section class="slide divider">
+  <div class="bar"><span class="chip">ช่วงที่ 5</span><span class="budget">2:00</span></div>
+  <div class="body">
+    <div class="num">05</div>
+    <h2>Retrospective</h2>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i></div>
+  <div class="foot"><span>สำเร็จ · ปัญหาจริง · Technical Debt · สิ่งที่จะปรับปรุง</span><span>12 / 14</span></div>
+</section>
+
+<section class="slide">
+  <div class="bar"><span class="chip">ช่วงที่ 5</span><span class="budget">บทเรียนและช่องว่าง</span></div>
+  <div class="body">
+    <h2>บั๊กที่อันตรายที่สุด <span style="color:var(--accent)">คือบั๊กที่ไม่ทำให้อะไรพัง</span></h2>
+    <ul>
+      <li>จัดกลุ่มเวลาด้วย UTC จนยอดขายไปอยู่ผิดวัน <strong>แต่กราฟยังดูปกติ</strong></li>
+      <li>เครื่องมือวัดที่รายงานผ่านหมด 10/10 ทั้งที่จริง 8/10</li>
+      <li>KPI 2 ตัวบนหน้าจอเดียวกันที่นิยามต่างกัน 1 หน่วย</li>
+    </ul>
+    <h3>Technical Debt ที่ยอมรับ — พูดเองก่อนถูกถาม</h3>
+    <div class="grid g3">
+      <div class="card"><div class="l"><span class="tag mid">ยังไม่ทำ</span><br><strong>NFR-USE-01</strong><br>วัดส่วนที่เครื่องวัดได้แล้ว 10/10 แต่ตัวเลข "90% ใน 60 วินาที" ต้องมาจากผู้ใช้จริง — เลือกเขียนว่ายังไม่ได้ทำ แทนการกรอกเอง</div></div>
+      <div class="card"><div class="l"><span class="tag mid">ยังไม่ทำ</span><br><strong>Code review</strong><br>PR ทุกใบยังไม่มีผู้รีวิวคนที่สอง</div></div>
+      <div class="card"><div class="l"><span class="tag mid">ยังไม่ทำ</span><br><strong>SMTP</strong><br>ยังเป็น dev-mode เพราะ credential ต้องตั้งโดยทีมเท่านั้น</div></div>
+    </div>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i></div>
+  <div class="foot"><span>38 commit แรก push ตรงเข้า main — เริ่มใช้ PR ช้าเกินไป</span><span>13 / 14</span></div>
+</section>
+
+<section class="slide divider">
+  <div class="bar"><span class="chip">Q &amp; A</span><span class="budget">5:00</span></div>
+  <div class="body">
+    <h1>ขอบคุณครับ</h1>
+    <p class="lede">พร้อมตอบคำถามและเปิดโค้ด/เอกสารประกอบได้ทันที</p>
+    <p class="mono" style="font-size:.85rem;opacity:.9">
+      github.com/kit-sinlapasa/sme-inventory-system · v1.1.0<br>
+      docs/ — Requirements+RTM · Architecture · AI Usage Log · Retrospective · Report · Usability · Release · Demo Script
+    </p>
+  </div>
+  <div class="rail"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i></div>
+  <div class="foot"><span>NC221 · มหาวิทยาลัยหอการค้าไทย</span><span>14 / 14</span></div>
+</section>
+
+</div>
+<div class="hint" id="hint">← → เลื่อนสไลด์ · F เต็มจอ</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var i = 0;
+  function show(n){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(s, k){ s.classList.toggle('on', k === i); });
+    try { location.hash = i ? '#' + (i + 1) : ''; } catch (e) {}
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(slides.length - 1); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (document.fullscreenElement) { document.exitFullscreen(); }
+      else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); }
+    }
+  });
+  document.addEventListener('click', function(e){
+    if (e.clientX > window.innerWidth * 0.5) { show(i + 1); } else { show(i - 1); }
+  });
+  var start = parseInt((location.hash || '').replace('#',''), 10);
+  show(isNaN(start) ? 0 : start - 1);
+  setTimeout(function(){ var h = document.getElementById('hint'); if (h) h.style.display = 'none'; }, 6000);
+})();
+</script>
+</body>
+</html>
