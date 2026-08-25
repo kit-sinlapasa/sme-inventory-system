@@ -31,3 +31,25 @@ class WarrantyCheckOut(BaseModel):
     model: str
     warranty_status: str
     warranty_expires_at: datetime
+
+
+class PurchaseHistoryOut(BaseModel):
+    """
+    FR-015 (CR-014) — ประวัติการซื้อของลูกค้าหนึ่งราย สำหรับพนักงานใช้ตอนลูกค้ามาเคลม
+
+    ตั้งใจ **ไม่ใส่ `buyer_phone` กลับมา** — ผู้เรียกเป็นคนพิมพ์เบอร์เข้ามาเองอยู่แล้ว
+    การส่งกลับไม่ได้เพิ่มประโยชน์ แต่เพิ่มโอกาสที่เบอร์ลูกค้าจะไปโผล่ใน log/cache ของ client
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    sale_id: int
+    serial_number: str
+    category: str
+    brand: str
+    model: str
+    branch_name: str
+    buyer_name: str
+    sold_at: datetime
+    warranty_expires_at: datetime
+    warranty_status: str
