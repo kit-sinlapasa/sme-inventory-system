@@ -17,8 +17,7 @@ Repo: https://github.com/kit-sinlapasa/sme-inventory-system
 
 > ⚠️ Free tier ของ Render spin down หลังไม่มีคนใช้ 15 นาที — request แรกหลังจากนั้นอาจช้า ~30-60 วินาที (ปกติ ไม่ใช่บั๊ก)
 
-📄 เอกสารประกอบทั้งหมด (Requirement Package, Architecture & Design, AI Usage Log) อยู่ที่ `../project/`
-**ก่อน commit ครั้งแรก ให้ย้าย 3 ไฟล์นั้นมาไว้ใน `docs/` ของ repo นี้** เพื่อให้เป็นส่วนหนึ่งของ git history จริง (เป็นหลักฐาน RTM/traceability ที่ Deck 05 ต้องการ)
+📄 **เอกสารประกอบทั้งหมดอยู่ใน [`docs/`](docs/)** — Requirement Package + RTM, Architecture & Design, AI Usage Log, Retrospective, Project Report และ Usability Test
 
 ## Tech Stack (ADR-003)
 - **Backend:** Python 3.11+ · FastAPI · SQLAlchemy 2.0 · Alembic · PostgreSQL
@@ -48,7 +47,8 @@ uvicorn app.main:app --reload --port 8000
 > **อัปเดตข้อมูลสาธิตบน production (Windows):**
 >
 > ```powershell
-> cd backend; .\scriptseseed_remote.ps1
+> cd backend
+> .\scripts\reseed_remote.ps1
 > ```
 >
 > แล้ววาง **External** Database URL ตอนที่สคริปต์ถาม — อย่าพิมพ์เป็น `$env:DATABASE_URL="..."` เอง
@@ -92,27 +92,29 @@ npm run dev
 | PR→PO flow (FR-009/010) | ✅ ใช้งานได้ + test — approve/reject กัน double-submit ด้วย pattern เดียวกับ ADR-002 |
 | Audit log (FR-011) | ✅ ใช้งานได้ + test — `GET /api/audit-log` ค้นย้อนหลังได้ (Admin เท่านั้น) |
 | รูปสินค้าสูงสุด 5 รูปต่อ SKU (FR-013) | ✅ ใช้งานได้ + test — URL-based, จัดการผ่านหน้า Products (CR-007) |
-| KPI Dashboard สรุปภาพรวม (FR-014) | ✅ ใช้งานได้ — เสริมหน้า Dashboard เดิมทั้ง Admin/Branch ไม่มี endpoint ใหม่ (CR-008) — **ธีมสว่างสไตล์ dashboard.render.com จริง + กราฟแท่งแนวนอนสีผ่าน CVD-safety check (CR-010)** เฉพาะหน้านี้ |
+| Dashboard เชิงวิเคราะห์ (FR-014) | ✅ ใช้งานได้ + test — **รื้อใหม่ทั้งหน้าใน CR-013**: 5 กราฟ + 3 ตาราง + KPI 4 ช่อง บน `/api/reports/*` 8 endpoint ที่สรุปผลใน SQL · เลือกช่วง 7/30/90 วัน · กรองสาขา · คลิกดูรายละเอียดสินค้า · ธีมสว่างสไตล์ Render (CR-010) สีผ่าน CVD-safety validator |
 | Branch UI (สต็อก/บันทึกขาย/คำขอสั่งซื้อ) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
 | Admin UI (สต็อกรวม/สินค้า/รับสต็อก/คำขอ/audit log) | ✅ ใช้งานได้ — click-through ผ่าน browser จริงครบ |
-| Seed data สาธิต (CR-009, ขยายโดย CR-012) | ✅ 60 สินค้า (6 หมวดหมู่ x 10) · **4 สาขาขนาดต่างกันจริง** (สำนักงานใหญ่ 60 รุ่น → สาขารังสิต 28 รุ่น) พร้อม S/N รับเข้าจริง, ขายบางส่วน, PR ครบ 3 สถานะจากหลายสาขา |
+| Seed data สาธิต (CR-009 → CR-012 → CR-013) | ✅ 60 สินค้า (6 หมวดหมู่ x 10) · **4 สาขาขนาดลดหลั่นกันจริง** · **ประวัติย้อนหลัง 9 เดือน** พร้อม Pareto (บางรุ่นขายดี บางรุ่นไม่เคยขายเลย) และ seasonality รายสัปดาห์ — จำเป็นเพื่อให้กราฟแนวโน้มมีอะไรให้อ่านจริง |
 | Purge ข้อมูลผู้ซื้อเก่า (NFR-PRIV-01) | ✅ ใช้งานได้ + test — `POST /api/admin/purge-old-buyer-data` manual purge ตาม retention policy |
 | Load test สาธารณะ (NFR-PERF-01) | ✅ 200 concurrent request จริง — P95 1472-1533ms (เป้าหมาย ≤2000ms) ผ่าน 2 รอบ ดู `docs/03-Architecture-Design.md` หัวข้อ 9.5 |
 | STRIDE mitigation verification | ✅ ทุกข้อมี automated test กำกับแล้ว (`test_stride_mitigations.py`) — ดู `docs/03-Architecture-Design.md` หัวข้อ 7 |
 | Dependency security (`pip-audit` + `npm audit`) | ✅ Backend 23→1 vulnerability (เหลือ 1 จุดที่ unreachable, ดูเหตุผลหัวข้อ 9.1) · Frontend 2→0 vulnerability (production deps) |
-| Usability test (NFR-USE-01) | 🟡 ยังไม่ทำ — ต้องการผู้ใช้จริงทดลอง AI ทำแทนไม่ได้ ทีมต้องทำเองก่อนส่งงาน |
-| Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน — redeploy ล่าสุดมี FR-012/013/014 ครบแล้ว (verify ผ่าน production จริง) แต่**ยังไม่ redeploy รอบ hardening ล่าสุด** (dependency upgrade + purge endpoint) ต้อง `git push` ให้ Render sync ก่อน |
+| Usability test (NFR-USE-01) | 🟡 **เตรียมครบแล้ว ยังไม่ได้รันกับผู้ใช้จริง** — เดิน task จริง + heuristic evaluation + พบและแก้บั๊ก 2 จุด · สคริปต์และตารางบันทึกพร้อมใน [`docs/06`](docs/06-Usability-Test-NFR-USE-01.md) · ตัวเลข "≥90% ใน 60 วินาที" ต้องมีผู้ใช้จริง 5-8 คน AI สร้างแทนไม่ได้ |
+| Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน — **auto-deploy ทุกครั้งที่ merge เข้า `main`** · ตรวจล่าสุดแล้วว่าใช้งานได้ครบ: ล็อกอิน 5 บัญชี, RBAC, CORS, ข้อมูล dashboard ครบถ้วน |
 
-> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 57 เคสจริง** (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail, low-stock alert debounce, product image limit, STRIDE mitigation, buyer-data purge ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) **UI ทั้ง Branch และ Admin ถูกคลิกทดสอบจริงผ่าน browser** ครบ flow: login → เพิ่มสินค้า → รับสต็อก → ขาย (S/N lookup) → เช็คประกันสาธารณะ → สร้าง/ปฏิเสธคำขอสั่งซื้อ → ดู audit log → จัดการรูปสินค้า → ดู KPI dashboard พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
+> ✅ **ยืนยันแล้ว (2026-08-24):** โครงนี้รันได้จริง ไม่ใช่แค่โค้ดที่ยังไม่เคยรัน — ทดสอบผ่าน `docker compose up db` + `alembic upgrade head` + `pytest` **ครบ 91 เคสจริง** (ตรวจซ้ำได้ด้วย `python -m pytest -q`) (concurrency, RBAC, soft-delete, stock isolation ระหว่างสาขา, PR→PO lifecycle, audit trail, low-stock alert debounce, product image limit, STRIDE mitigation, buyer-data purge ฯลฯ) และผ่าน CI จริงบน GitHub Actions ด้วย (ดู badge ด้านบน) **UI ทั้ง Branch และ Admin ถูกคลิกทดสอบจริงผ่าน browser** ครบ flow: login → เพิ่มสินค้า → รับสต็อก → ขาย (S/N lookup) → เช็คประกันสาธารณะ → สร้าง/ปฏิเสธคำขอสั่งซื้อ → ดู audit log → จัดการรูปสินค้า → ดู KPI dashboard พบและแก้บัคจริงหลายจุดระหว่างทาง (ดู `docs/02-AI-Usage-Log.md`) **แต่ทีมควรรันเองอีกครั้งเพื่อ independent verification ก่อนอ้างเป็นหลักฐานส่งอาจารย์**
 
-## Test Login (local dev, สร้างจาก `python -m scripts.seed`)
+## Test Login (ใช้ได้ทั้ง local dev และระบบที่ deploy จริง — สร้างจาก `python -m scripts.seed`)
+
+> ไม่ระบุจำนวนชิ้นเป๊ะ ๆ เพราะ seed สุ่มใหม่ทุกครั้ง สิ่งที่คงที่คือ**ลำดับขนาดสาขา** (สำนักงานใหญ่ > สยาม > รัชดา > รังสิต) ซึ่งตั้งใจให้ไม่เท่ากันเพื่อให้ dashboard เทียบสาขาได้อย่างมีความหมาย
 | Role | Username | Password | สังกัด | สต็อกตัวอย่าง |
 |---|---|---|---|---|
 | Admin | `admin` | `admin1234` | ทุกสาขา | — (ดูได้ทุกสาขา แต่**ขายเองไม่ได้**) |
-| Branch Staff | `hq1` | `hq1234` | สำนักงานใหญ่ | 60 รุ่น / ~191 ชิ้น |
-| Branch Staff | `branch1` | `branch1234` | สาขาสยาม | 55 รุ่น / ~112 ชิ้น |
-| Branch Staff | `branch2` | `rachada1234` | สาขารัชดา | 40 รุ่น / ~50 ชิ้น |
-| Branch Staff | `branch3` | `rangsit1234` | สาขารังสิต | 28 รุ่น / ~21 ชิ้น |
+| Branch Staff | `hq1` | `hq1234` | สำนักงานใหญ่ | ใหญ่สุด — สต็อกครบทุกรุ่น |
+| Branch Staff | `branch1` | `branch1234` | สาขาสยาม | รองลงมา |
+| Branch Staff | `branch2` | `rachada1234` | สาขารัชดา | กลาง ๆ |
+| Branch Staff | `branch3` | `rangsit1234` | สาขารังสิต | เล็กสุด — สาขาใหม่ สต็อกยังไม่ครบ |
 
 > **ทำไม Admin ขายเองไม่ได้:** endpoint บันทึกขายดึง `branch_id` จาก token เสมอ (ไม่เชื่อค่าจาก client ตาม STRIDE-T) แต่ Admin ไม่สังกัดสาขาใด ระบบจึงไม่รู้ว่าจะบันทึกขายเข้าสาขาไหน — และเป็นการแยกหน้าที่ (separation of duties) ระหว่างคนอนุมัติ PR กับคนขายหน้าร้าน สำนักงานใหญ่ที่ต้องการขายจริงใช้บัญชี `hq1` ซึ่งสังกัดสาขาชัดเจน
 

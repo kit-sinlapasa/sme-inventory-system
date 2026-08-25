@@ -161,8 +161,20 @@ erDiagram
 | `/api/purchase-requests/{id}/approve` | POST | **Admin only** | FR-010 | สร้าง PurchaseOrder อัตโนมัติ |
 | `/api/purchase-requests/{id}/reject` | POST | **Admin only** | FR-010 | body: `{reason}` — reason เป็น field บังคับ |
 | `/api/audit-log` | GET | **Admin only** | FR-011, NFR-MAINT-01 | filter ตาม entity_type/entity_id/date range, index บน serial_number |
-| `/api/alerts/low-stock` | GET | **Admin only** | FR-012 | คำนวณจาก stock ปัจจุบัน เทียบ reorder_point ต่อ branch_sku |
+| ~~`/api/alerts/low-stock`~~ | — | — | FR-012 | **ออกแบบไว้แต่ไม่ได้ทำ** — FR-012 ถูก implement เป็นการแจ้งเตือนทางอีเมลที่ trigger ตอนขาย (`services/stock_alerts.py`) และแสดงผลผ่าน `/api/stock` (คอลัมน์ `reorder_point`) + `/api/reports/stockout-risk` แทน จึงไม่มี endpoint นี้จริง (ตรวจบน production ได้ 404) |
+| `/api/branches` | GET | **Admin only** | FR-003, FR-014 | รายชื่อสาขาสำหรับตัวกรองบน dashboard |
+| `/api/reports/summary` | GET | Admin (ทุกสาขา), Branch (ของตน) | FR-014, CR-013 | KPI 6 ตัว + ยอดของช่วงก่อนหน้าไว้เทียบ |
+| `/api/reports/daily-sales` | GET | Admin, Branch (scope อัตโนมัติ) | FR-014, CR-013 | ยอดขายรายวันแยกสาขา — จัดกลุ่มด้วย `AT TIME ZONE 'Asia/Bangkok'` |
+| `/api/reports/top-products` | GET | Admin, Branch | FR-014, CR-013 | สินค้าขายดี — กรองสาขาก่อน `LIMIT` เสมอ |
+| `/api/reports/stock-aging` | GET | Admin, Branch | FR-014, CR-013 | อายุสต็อก 4 ถัง คืนครบทุกถังแม้ว่าง |
+| `/api/reports/branch-performance` | GET | Admin (ทุกสาขา), Branch (แถวเดียว) | FR-014, CR-013 | อัตราระบาย = ขาย ÷ (ขาย + คงเหลือ) · คืน `null` เมื่อ 0/0 |
+| `/api/reports/weekday-sales` | GET | Admin, Branch | FR-014, CR-013 | ยอดตามวันในสัปดาห์ (เวลาไทย) |
+| `/api/reports/stockout-risk` | GET | Admin, Branch | FR-012, CR-013 | เรียงตามจำนวนวันก่อนของหมด ไม่ใช่ยอดคงเหลือ |
+| `/api/reports/pending-requests` | GET | Admin, Branch | FR-009, CR-013 | คำขอค้างพิจารณา เรียงตามอายุ |
 | `/api/admin/purge-old-buyer-data` | POST | **Admin only** | NFR-PRIV-01 | Manual trigger — anonymize buyer_name/phone ของ Sale ที่ warranty_expires_at เกิน 3 ปี |
+
+> ตารางนี้ตรวจเทียบกับ `prefix=` ของ router จริงทุกตัวและยิงทดสอบบน production แล้ว
+> (พบว่า `/api/alerts/low-stock` ที่เคยระบุไว้ไม่มีอยู่จริง — คืน 404 จึงแก้ให้ตรงตามที่ทำจริง)
 
 **หลักการร่วมทุก endpoint ที่แก้ไขข้อมูล:** ดึง `branch_id` จาก JWT token เสมอ **ไม่เชื่อ `branch_id` ที่ client ส่งมาใน request body** — ป้องกัน tampering (ดู STRIDE ข้อ T ด้านล่าง)
 
