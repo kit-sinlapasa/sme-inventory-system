@@ -5,7 +5,102 @@
 
 ---
 
-## 1. Architecture Pattern
+## 1. Context Diagram — ขอบเขตระบบและสิ่งที่อยู่นอกระบบ
+
+แสดงว่า **อะไรอยู่ในความรับผิดชอบของเรา และอะไรไม่ใช่** — เส้นแบ่งนี้สำคัญเพราะกำหนดว่า
+เวลาอะไรพัง เราแก้เองได้หรือต้องพึ่งคนอื่น
+
+```mermaid
+flowchart TB
+    customer["👤 ลูกค้าทั่วไป<br/>(ไม่ต้องล็อกอิน)"]
+    staff["👤 พนักงานสาขา<br/>BranchStaff"]
+    admin["👤 สำนักงานใหญ่<br/>Admin"]
+
+    subgraph boundary["ขอบเขตระบบที่เราพัฒนา"]
+        sys["SME Inventory &amp; Order Management<br/>─────────────<br/>Product · Stock · Order<br/>Customer · Alert · Report"]
+    end
+
+    smtp["📧 SMTP Server<br/>(ภายนอก)"]
+    render["☁️ Render<br/>PostgreSQL + Hosting"]
+
+    customer -->|"เช็คประกันด้วย S/N"| sys
+    staff -->|"บันทึกขาย · ขอสั่งซื้อ · ดูสต็อกสาขา"| sys
+    admin -->|"จัดการสินค้า · รับสต็อก · อนุมัติ PR · ดูรายงาน"| sys
+    sys -->|"แจ้งเตือนสต็อกใกล้หมด"| smtp
+    sys -->|"อ่าน/เขียนข้อมูล"| render
+
+    style boundary fill:#eaf2fd,stroke:#2a78d6,stroke-width:2px
+    style sys fill:#fff,stroke:#2a78d6
+```
+
+**สิ่งที่อยู่นอกขอบเขต และผลที่ตามมา**
+
+| ภายนอก | เราควบคุมไม่ได้ | รับมืออย่างไร |
+|---|---|---|
+| SMTP Server | ส่งอีเมลไม่สำเร็จ / ช้า | การขายต้องสำเร็จแม้ส่งอีเมลไม่ได้ — การแจ้งเตือนไม่อยู่ใน transaction เดียวกับการขาย |
+| Render free tier | เครื่องหลับหลังไม่มีคนใช้ 15 นาที | request แรกช้า ~30-60 วินาที · ระบุไว้ใน README และ Release Notes ว่าเป็นพฤติกรรมปกติ |
+| นาฬิกาของเบราว์เซอร์ผู้ใช้ | ตั้งเวลา/โซนเวลาผิดได้ | คำนวณสถานะประกันที่ **server** เสมอ ไม่ให้ client ตัดสิน |
+
+---
+
+## 2. Component Diagram — องค์ประกอบภายในและการไหลของข้อมูล
+
+```mermaid
+flowchart TB
+    subgraph fe["Frontend (React + Vite)"]
+        pub["หน้าสาธารณะ<br/>WarrantyCheck"]
+        bch["โซนสาขา<br/>Dashboard · RecordSale · Requests"]
+        adm["โซนสำนักงานใหญ่<br/>Dashboard · Products · Receive · PR · Audit"]
+    end
+
+    subgraph api["Backend (FastAPI)"]
+        deps["deps.py — JWT + RBAC<br/>require_admin / require_branch_staff / require_any_role"]
+        subgraph routers["Routers"]
+            r1["public · auth"]
+            r2["items · stock · sales"]
+            r3["products · branch_sku<br/>purchase_requests · branches"]
+            r4["reports (8 endpoint)"]
+            r5["audit_log · admin"]
+        end
+        subgraph svc["Services"]
+            s1["stock_alerts<br/>(debounce การแจ้งเตือน)"]
+            s2["audit<br/>(บันทึกทุกการเปลี่ยนแปลง)"]
+            s3["email<br/>(ส่งจริง/log ตามการตั้งค่า)"]
+        end
+    end
+
+    db[("PostgreSQL<br/>10 ตาราง")]
+    mail["SMTP ภายนอก"]
+
+    pub --> r1
+    bch --> deps
+    adm --> deps
+    deps --> routers
+    r2 --> s1
+    r2 --> s2
+    r3 --> s2
+    r5 --> s2
+    s1 --> s3
+    s3 -.->|"ถ้าไม่ตั้งค่า SMTP จะ log แทน"| mail
+    routers --> db
+    svc --> db
+
+    style deps fill:#fdf2f2,stroke:#d03b3b
+    style db fill:#eaf2fd,stroke:#2a78d6
+```
+
+**จุดที่ตั้งใจออกแบบให้เป็นแบบนี้**
+
+| องค์ประกอบ | เหตุผล |
+|---|---|
+| `deps.py` เป็นประตูเดียว | ทุก route ที่ต้องล็อกอินผ่านที่นี่ทั้งหมด — ตรวจสิทธิ์ที่เดียว ไม่กระจายไปตาม router (ถ้ากระจาย พลาดที่เดียวคือรั่ว) · หน้าสาธารณะเป็นทางเดียวที่ข้ามได้ และ schema บังคับไม่ให้ข้อมูลผู้ซื้อหลุด |
+| `reports` แยกจาก router ข้อมูลดิบ | สรุปผลใน SQL ไม่ใช่ในเบราว์เซอร์ — router รายการมี `limit` ถ้าเอาไป group ต่อฝั่ง client กราฟจะคิดจากข้อมูลที่ถูกตัดไปแล้วโดยหน้าจอยังดูปกติ |
+| `stock_alerts` เป็น service แยก | ถูกเรียกจากทั้งการรับเข้าและการขาย แต่**ยิงแจ้งเตือนได้เฉพาะฝั่งขาย** (`may_alert`) — เคยเป็นบั๊กจริงตอนทั้งสองฝั่งเรียกแบบเดียวกัน |
+| `email` แยกจาก `stock_alerts` | ถ้าไม่ได้ตั้งค่า SMTP จะ log แทนการส่ง ทำให้ระบบทำงานได้โดยไม่ต้องมี credential — และ**ไม่มีใครต้องใส่รหัสผ่านอีเมลลงในเครื่องมือ AI** |
+
+---
+
+## 3. Architecture Pattern
 
 ### ADR-001: ระบบเดียว Role-Based แทนการแยก 3 แอป
 
@@ -25,7 +120,7 @@ Data Access    → Repository layer + DB (transaction boundary อยู่ท�
 
 ---
 
-## 2. Quality Attribute Scenarios (ตัวอย่างการเขียน NFR ให้ทดสอบได้ตามรูปแบบ Source→Stimulus→Environment→Response)
+## 4. Quality Attribute Scenarios (ตัวอย่างการเขียน NFR ให้ทดสอบได้ตามรูปแบบ Source→Stimulus→Environment→Response)
 
 | องค์ประกอบ | Scenario #1 (NFR-REL-01) | Scenario #2 (NFR-PERF-01) |
 |---|---|---|
@@ -36,7 +131,7 @@ Data Access    → Repository layer + DB (transaction boundary อยู่ท�
 
 ---
 
-## 3. ADR-002: กลยุทธ์จัดการ Concurrency (NFR-REL-01)
+## 5. ADR-002: กลยุทธ์จัดการ Concurrency (NFR-REL-01)
 
 | หัวข้อ | รายละเอียด |
 |---|---|
@@ -47,7 +142,7 @@ Data Access    → Repository layer + DB (transaction boundary อยู่ท�
 
 ---
 
-## 4. ER Model
+## 6. ER Model
 
 ```mermaid
 erDiagram
@@ -144,7 +239,7 @@ erDiagram
 
 ---
 
-## 5. REST API Specification
+## 7. REST API Specification
 
 | Endpoint | Method | Auth/Role | ตอบสนอง FR/NFR | หมายเหตุ |
 |---|---|---|---|---|
@@ -180,7 +275,7 @@ erDiagram
 
 ---
 
-## 6. User Flow (3 Persona)
+## 8. User Flow (3 Persona)
 
 ### End Customer — เช็คประกัน (ตรงกับ US-01)
 ```mermaid
@@ -293,7 +388,7 @@ flowchart TD
 
 ---
 
-## 7. STRIDE Threat Model
+## 9. STRIDE Threat Model
 
 > ⚠️ **อัปเดตสัปดาห์ 7 (Hardening):** ทุกแถวด้านล่างมีคอลัมน์ "Verified" เพิ่มเข้ามา — ยืนยันจริงด้วย
 > automated test (`tests/integration/test_stride_mitigations.py`) ไม่ใช่แค่คำอธิบายในเอกสารอีกต่อไป
@@ -312,7 +407,7 @@ flowchart TD
 
 ---
 
-## 8. ADR-003: Technology Stack
+## 10. ADR-003: Technology Stack
 
 | หัวข้อ | รายละเอียด |
 |---|---|
@@ -347,7 +442,7 @@ repo/
 └── docs/                  (เอกสารทั้งหมดจากบทสนทนานี้ + Appendix รูปโน้ตลายมือ)
 ```
 
-## 9. Security & Performance Hardening (สัปดาห์ 7)
+## 11. Security & Performance Hardening (สัปดาห์ 7)
 
 ### 9.1 Dependency Vulnerability Scan (`pip-audit`)
 

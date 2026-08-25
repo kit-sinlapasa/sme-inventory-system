@@ -431,6 +431,27 @@ Edge case อื่นที่ verify แล้วจริงแต่ไม�
 
 ## ⑪ Appendix
 
+### Technical Evidence — ตำแหน่งของแต่ละหลักฐาน
+
+| Evidence Area | สิ่งที่ต้องมี | อยู่ที่ไหน |
+|---|---|---|
+| **Architecture** | Context/Component Diagram · Data Model · API Contract · Design Decisions | [03 §1 Context](03-Architecture-Design.md) · [§2 Component](03-Architecture-Design.md) · §6 ER Model · §7 REST API · ADR-001/002/003 |
+| **Code** | Git repo · commits · branching · PR · coding standard · README | [repo](https://github.com/kit-sinlapasa/sme-inventory-system) · [PR ทั้งหมด](https://github.com/kit-sinlapasa/sme-inventory-system/pulls?q=is%3Apr) · `ruff` ใน `backend/pyproject.toml` · [README](../README.md) |
+| **Test** | Unit/Integration/System/Acceptance + test report | [`evidence/test-report.md`](evidence/test-report.md) — **122 เคส ครบ 4 ระดับ** · trace กลับ requirement ในคอลัมน์สุดท้ายของตาราง |
+| **CI/CD** | Pipeline + **ภาพหรือ log ที่ทำงานจริง** | [`evidence/ci-pipeline-log.md`](evidence/ci-pipeline-log.md) — log จาก run จริงดึงด้วย `gh run view` · [.github/workflows/ci.yml](../.github/workflows/ci.yml) |
+| **Release** | Version/Tag · environment · deployment evidence · rollback/known issues | [`07-Release-Notes.md`](07-Release-Notes.md) — tag **`v1.1.0`** · known issues 8 ข้อ |
+| **Security** | Threat/Risk · secrets handling · dependency/license check | [03 §9 STRIDE](03-Architecture-Design.md) · §11 Hardening (`pip-audit`/`npm audit`) · [LICENSE](../LICENSE) + ตรวจ license ของ dependency 16 ตัว |
+
+### ⚠️ Contribution ของสมาชิก — บันทึกตรงไปตรงมา
+
+เกณฑ์ระบุว่า **"มี contribution จากสมาชิกทุกคน"** — โครงงานนี้ทำโดย**คนเดียว**ร่วมกับ AI
+ประวัติ git จึงมีผู้เขียนคนเดียว (`kit-sinlapasa`) และ commit ทุกอันมี `Co-Authored-By: Claude`
+กำกับไว้ตามจริงว่า AI มีส่วนร่วมในการเขียน — ไม่ได้แสร้งว่าเป็นงานที่เขียนเองล้วน
+
+ตรวจสอบได้ด้วย `git log --format='%an <%ae>' | sort -u` และ `git log --grep='Co-Authored-By'`
+
+
+
 ### Source / Repository
 
 - Repo: https://github.com/kit-sinlapasa/sme-inventory-system
