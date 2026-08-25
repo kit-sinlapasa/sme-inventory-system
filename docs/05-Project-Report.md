@@ -54,7 +54,7 @@
 | ความท้าทาย | วิธีจัดการ | หลักฐาน |
 |---|---|---|
 | **Transaction consistency** | ADR-002 — conditional `UPDATE ... WHERE status='InStock'` + เช็ค `rowcount` ร่วมกับ Idempotency-Key · pattern เดียวกันใช้ซ้ำกับ PR approve/reject | concurrency test ยิง 10 thread แข่งกันจริงบน Postgres จริง — สำเร็จได้แค่ 1 เสมอ |
-| **Business rules** | คำนวณวันหมดประกันจากวันขายจริงตามระยะประกันของหมวดสินค้า · จุดสั่งซื้อต่อ SKU ต่อสาขา · แยกหน้าที่ (Admin อนุมัติ PR ได้แต่ขายเองไม่ได้) · soft delete แทนการลบถาวรเพื่อรักษาประวัติประกัน | 105 automated tests · RBAC boundary tests ยืนยัน 403 ทุกเส้นทาง |
+| **Business rules** | คำนวณวันหมดประกันจากวันขายจริงตามระยะประกันของหมวดสินค้า · จุดสั่งซื้อต่อ SKU ต่อสาขา · แยกหน้าที่ (Admin อนุมัติ PR ได้แต่ขายเองไม่ได้) · soft delete แทนการลบถาวรเพื่อรักษาประวัติประกัน | 122 automated tests · RBAC boundary tests ยืนยัน 403 ทุกเส้นทาง |
 
 **นอกขอบเขต:** ไม่มีตะกร้าสินค้า/ชำระเงิน/จัดส่งออนไลน์ (อ้างอิง ihavecpu.com เฉพาะด้านหน้าตา/การจัดหมวดหมู่เท่านั้น) การขายเกิดขึ้นหน้าร้าน พนักงานเป็นผู้บันทึกรายการเข้าระบบ ไม่ใช่ลูกค้ากรอกเอง
 
@@ -166,7 +166,7 @@ REST API ทุก endpoint แยกตาม resource (auth, public, products,
 | Auth | `python-jose` (JWT, HS256) · `passlib[bcrypt]` |
 | Rate Limiting | `slowapi` |
 | Frontend | React 18 + Vite + Tailwind CSS + React Router v7 |
-| Testing | Pytest + httpx (backend, 113 tests) |
+| Testing | Pytest + httpx (backend, 122 tests ครบ 4 ระดับ) |
 | CI/CD | GitHub Actions |
 | Deploy | Render.com (free tier — Postgres + 2 web service) |
 
@@ -232,18 +232,24 @@ frontend/src/
 
 ### Test Cases & Automation
 
-**61 automated tests** (pytest) แบ่งเป็น:
+**122 automated tests** (pytest) ครบ 4 ระดับตามที่เกณฑ์กำหนด:
 
-| กลุ่ม | จำนวน | ตัวอย่าง |
-|---|---|---|
-| Integration (business logic + RBAC) | 48 | products, items, stock, sales, purchase_requests, audit_log, branch_sku, product_images, stock_alerts, purge_buyer_data |
-| Concurrency | 4 | 10-thread race condition บน `POST /api/sales` |
-| Security (STRIDE + CORS) | 9 | JWT tampering, branch_id spoofing, rate limit, exception leak, CORS headers |
-| Load test (NFR-PERF-01, แยกจาก pytest) | 1 script | `scripts/load_test.py` — 200 concurrent request จริง |
+| ระดับ | จำนวน | ทดสอบอะไร | trace กลับไปหา |
+|---|---|---|---|
+| **Unit** | 14 | ตรรกะบริสุทธิ์แยกเดี่ยว ไม่แตะ DB — ขอบเขตสาขา, ช่วงเวลารายงาน, แปลง scheme ของ DB URL, CORS | NFR-SEC-02, ADR-003 |
+| **Integration** | 95 | ยิงผ่าน API จริงบน Postgres จริง ครอบทุก endpoint | FR-001~015 |
+| **Acceptance** | 9 | เขียนตาม Given-When-Then ของ User Story โดยตรง — AC ที่เพี้ยนจากโค้ดจะทำให้ test พัง | US-01, US-04~07 |
+| **System / Concurrency** | 4 | 10 thread แข่งกันขายชิ้นเดียวกันบน DB จริง | NFR-REL-01, ADR-002 |
+| **Load test** (แยกจาก pytest) | 1 script | `scripts/load_test.py` — 200 concurrent request จริง | NFR-PERF-01 |
+
+> **ตัวเลขนี้ generate จากการรันจริง** — รายงานเต็มที่ [`evidence/test-report.md`](evidence/test-report.md) · ตรวจซ้ำเองได้ด้วย `python -m pytest -q`
+>
+> *เอกสารฉบับก่อนหน้าเคยมีตัวเลข test 3 ค่าที่ขัดกันเองในไฟล์เดียว (61 / 105 / 113) เพราะฝังตัวเลขไว้หลายที่แล้วแก้ไม่ครบทุกที่ จึงเปลี่ยนมาอ้างรายงานที่สร้างจากการรันแทน*
+
 
 ### Results & Metrics
 
-- **61/61 pytest ผ่านจริง** บน CI (GitHub Actions, Postgres service container) — ไม่ใช่แค่ local
+- **122/122 pytest ผ่านจริง** บน CI (GitHub Actions, Postgres service container) — ไม่ใช่แค่ local
 - `ruff check` clean ทุก commit
 - Load test: P95 = 1472-1533ms (เป้าหมาย ≤2000ms) ผ่าน 2 รอบทดสอบ
 - `pip-audit`: แก้จาก 23 vulnerabilities เหลือ 1 (unreachable, ดู §⑧)
@@ -341,6 +347,26 @@ Apache-2.0 / LGPL-with-exceptions ซึ่งเข้ากันได้ท�
 
 ภาพหน้าจอทั้งหมดด้านล่าง **ถ่ายจากระบบที่ deploy จริงบน production** (`sme-inventory-frontend.onrender.com`) ผ่าน Playwright ไม่ใช่ mockup และไม่ใช่เครื่อง dev — ไฟล์ต้นฉบับอยู่ที่ `docs/screenshots/` · ข้อมูลที่เห็นคือชุด CR-013 ที่มีประวัติย้อนหลัง 9 เดือน จึงมีกราฟแนวโน้มจริงให้อ่าน
 
+### Demo Flow — ลำดับการสาธิต
+
+เส้นทางที่เดินได้ต่อเนื่องจริงในระบบเดียว ไม่ต้องสลับ environment:
+
+```
+[สาธารณะ]  เช็คประกันด้วย S/N ────────────────► เห็นรุ่น + สถานะประกัน
+                                                  (ลองพิมพ์ผิดรูปแบบ → ระบบบอกรูปแบบที่ถูก)
+[สำนักงานใหญ่] login ─► ภาพรวมธุรกิจ ─► เลือกช่วง 7/30/90 วัน ─► กรองสาขา
+                     └► คลิกแถวในตารางเสี่ยงของขาด ─► รายละเอียดสินค้า + S/N รายชิ้น
+[สาขา]     login ─► ภาพรวมสาขา ─► กด "ขอสั่งซื้อ" จากรายการใกล้หมด
+                 └► บันทึกขาย: คลิก S/N จากตาราง ─► กรอกผู้ซื้อ ─► ยืนยัน ─► ได้วันหมดประกันอัตโนมัติ
+                 └► ค้นประวัติการซื้อจากเบอร์โทร (กรณีลูกค้าไม่มี S/N)
+[สำนักงานใหญ่] คำขอสั่งซื้อ ─► อนุมัติ ─► เกิด PO อัตโนมัติ ─► Audit Log บันทึกครบ
+```
+
+**URL สำหรับสาธิต** — [Frontend](https://sme-inventory-frontend.onrender.com) · [API Docs](https://sme-inventory-api.onrender.com/docs)
+· บัญชีทดสอบดูที่ [README](../README.md#test-login)
+
+> ⚠️ Render free tier หลับหลังไม่มีคนใช้ 15 นาที — **เปิดเว็บทิ้งไว้ก่อนเริ่มนำเสนอ** เพื่อให้เครื่องตื่นแล้ว
+
 ### Happy Path
 
 **1. เช็คประกันสาธารณะ (FR-006, ไม่ต้อง login)**
@@ -417,17 +443,24 @@ Edge case อื่นที่ verify แล้วจริงแต่ไม�
 
 ## ⑩ Retrospective
 
-เอกสารเต็มอยู่ที่ [04-Retrospective.md](04-Retrospective.md) — สรุปสั้น:
+เอกสารเต็มอยู่ที่ [04-Retrospective.md](04-Retrospective.md) — สรุปตามหัวข้อที่เกณฑ์กำหนด:
 
-**สิ่งที่สำเร็จ:** แก้ requirement เข้าใจผิดได้ตั้งแต่ต้นก่อนลงมือจริง, concurrency control พิสูจน์ได้จริงด้วย test ไม่ใช่แค่ทฤษฎี, deploy จริงสำเร็จหลัง debug ด้วยหลักฐานจริง 3 รอบ, test coverage ครอบคลุมหลายมิติ, AI Usage Log ที่ซื่อสัตย์
+**What went well**
+แก้ความเข้าใจผิดเรื่อง requirement ได้ตั้งแต่ก่อนเขียนโค้ด (Hardware = อะไหล่คอม ไม่ใช่เครื่องมือช่าง) ทำให้ Data Model ถูกตั้งแต่ต้น · concurrency control พิสูจน์ด้วย test 10 thread จริงบน Postgres จริง ไม่ใช่แค่อ้างว่าออกแบบไว้ · deploy ขึ้น production จริงและตรวจซ้ำได้ทุกครั้ง
 
-**ปัญหาจริง:** ประเมิน timeline ผิด 3 รอบ, scope ขยายผ่าน CR หลายครั้ง, Windows encoding bugs ซ้ำๆ, บั๊ก logic 2 จุดที่จับได้จากการทดสอบจริง, เกือบทำ tooling environment ของตัวเองพัง, **ไม่เคยใช้ branch/PR เลยตลอดโครงงาน**, และล่าสุด **production ไม่มี CORS middleware มาตลอด** จนเกือบไม่ถูกจับได้ก่อน demo จริง
+**What went wrong**
+ประเมิน timeline ผิด 3 รอบจนต้องรื้อ priority ใหม่ทั้งชุด · scope ขยายผ่าน CR 15 ครั้ง สะท้อนว่า elicitation แรกไม่ครอบคลุมพอ · บั๊ก encoding บน Windows ซ้ำหลายรอบเพราะไม่ตั้ง `PYTHONUTF8=1` ตั้งแต่ต้น · **ใช้ branch/PR ช้าเกินไป — 38 commit แรก push ตรงเข้า `main`**
 
-**Technical Debt:** ดูตารางเต็มใน Retrospective §3 — รายการหลัก: branch/PR workflow, usability test, load test ของ audit log ที่ scale ใหญ่, SMTP บน production ยังไม่ตั้งค่า
+**What we learned**
+บทเรียนที่ใหญ่ที่สุดคือ **บั๊กที่อันตรายที่สุดคือบั๊กที่ไม่ทำให้อะไรพัง** — จัดกลุ่มเวลาด้วย UTC แทนเวลาไทยจนกราฟผิดวันทั้งที่หน้าจอดูปกติ · test ที่ fail ไม่ได้เพราะดักฟัง engine ผิดตัว · เครื่องมือวัดที่รายงานผ่านหมดเพราะสลับลำดับพารามิเตอร์ · KPI 2 ตัวบนหน้าจอเดียวกันที่นิยามต่างกัน 1 หน่วย · ทุกตัวถูกจับได้เพราะ **รันจริงแล้ววัดผล ไม่ใช่เพราะอ่านโค้ดซ้ำ** และหลายตัวจับได้เพราะเอา test ไปรันกับโค้ดที่ยังผิด เพื่อดูว่ามัน fail จริงไหม
 
-**สิ่งที่จะปรับปรุง:** ยืนยัน scope/timeline ให้นิ่งก่อนเริ่ม, ตั้ง isolated dev environment ตั้งแต่แรก, เริ่มใช้ branch+PR ตั้งแต่ commit แรก, ทดสอบ deploy config end-to-end ก่อน push จริงเสมอ, แทรก usability test คู่ขนานกับการพัฒนา UI
+**What we would improve**
+ยืนยัน scope/timeline ให้นิ่งก่อนเริ่ม · ตั้ง isolated venv ตั้งแต่ commit แรก · **บังคับ branch protection ด้วยเครื่องมือ ไม่ใช่ด้วยความตั้งใจ** (โครงงานนี้พิสูจน์เองแล้วว่าตั้งใจไว้ในแผนสัปดาห์ 2 แต่จริง ๆ เริ่มทำตอน commit ที่ 39) · หาเพื่อนร่วมชั้นสลับกันรีวิว PR เพราะ PR ที่ไม่มีใครรีวิวยังไม่ใช่ code review · แทรก usability test คู่ขนานกับการพัฒนา UI แทนที่จะทิ้งไว้สัปดาห์สุดท้าย
+
+**Technical Debt ที่ยังเหลือ** — ตารางเต็มใน [Retrospective §3](04-Retrospective.md) และ [Known Issues 8 ข้อ](07-Release-Notes.md)
 
 ---
+
 
 ## ⑪ Appendix
 
@@ -461,7 +494,7 @@ Edge case อื่นที่ verify แล้วจริงแต่ไม�
 
 ### Test Evidence
 
-- Full test suite: `backend/tests/` — จำนวนล่าสุดตรวจซ้ำได้ด้วย `python -m pytest -q` (ณ วันเขียน 113 ผ่านทั้งหมด) · ตัวเลขนี้เคยล้าสมัย 2 รอบเพราะฝังไว้เฉย ๆ จึงระบุคำสั่งกำกับไว้ให้ตรวจเองได้
+- Full test suite: `backend/tests/` — จำนวนล่าสุดตรวจซ้ำได้ด้วย `python -m pytest -q` (ณ วันเขียน 122 ผ่านทั้งหมด) · ตัวเลขนี้เคยล้าสมัย 2 รอบเพราะฝังไว้เฉย ๆ จึงระบุคำสั่งกำกับไว้ให้ตรวจเองได้
 - Load test script: `backend/scripts/load_test.py`
 - CI logs: ดูที่ GitHub Actions run history ของ repo (เขียวทุกครั้งตั้งแต่สัปดาห์ 2)
 
