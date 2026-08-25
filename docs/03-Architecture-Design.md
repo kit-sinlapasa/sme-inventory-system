@@ -29,8 +29,8 @@ flowchart TB
     sys -->|"แจ้งเตือนสต็อกใกล้หมด"| smtp
     sys -->|"อ่าน/เขียนข้อมูล"| render
 
-    style boundary fill:#eaf2fd,stroke:#2a78d6,stroke-width:2px
-    style sys fill:#fff,stroke:#2a78d6
+    style boundary fill:#ffffff,stroke:#000000,stroke-width:2px
+    style sys fill:#f2f2f2,stroke:#333333
 ```
 
 **สิ่งที่อยู่นอกขอบเขต และผลที่ตามมา**
@@ -85,8 +85,8 @@ flowchart TB
     routers --> db
     svc --> db
 
-    style deps fill:#fdf2f2,stroke:#d03b3b
-    style db fill:#eaf2fd,stroke:#2a78d6
+    style deps fill:#f2f2f2,stroke:#333333
+    style db fill:#f2f2f2,stroke:#333333
 ```
 
 **จุดที่ตั้งใจออกแบบให้เป็นแบบนี้**
