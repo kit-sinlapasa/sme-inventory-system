@@ -46,15 +46,25 @@ export default function WarrantyCheck() {
         </p>
 
         <form onSubmit={handleCheck} className="flex gap-2">
+          {/* placeholder อย่างเดียวไม่พอเป็นป้ายกำกับ — มันหายไปทันทีที่ผู้ใช้เริ่มพิมพ์
+              คนที่ใช้โปรแกรมอ่านหน้าจอจึงไม่รู้ว่าช่องนี้ให้กรอกอะไร (WCAG 3.3.2)
+              ใช้ aria-label แทนการเพิ่ม <label> ที่มองเห็นได้ เพราะหัวข้อกับคำอธิบาย
+              ด้านบนบอกอยู่แล้วสำหรับคนที่มองเห็น การเพิ่มป้ายซ้ำจะรกโดยไม่จำเป็น */}
           <input
             className="rd-input flex-1"
+            aria-label="หมายเลขซีเรียล (S/N) ของสินค้า"
             placeholder={`เช่น ${SERIAL_FORMAT_EXAMPLE}`}
             value={serial}
             onChange={(e) => setSerial(e.target.value)}
             required
           />
+          {/* min-h-11 = 44px · ปุ่มมาตรฐานของระบบสูง 38px ซึ่ง**ผ่าน WCAG AA อยู่แล้ว**
+              (2.5.8 Target Size Minimum = 24px) แต่ไม่ถึงเกณฑ์ AAA (2.5.5 = 44px)
+              ขยายเฉพาะปุ่มนี้เพราะเป็นหน้าเดียวที่ลูกค้าทั่วไปใช้จากมือถือหน้าร้าน
+              และเป็น task ที่ NFR-USE-01 วัดเวลาโดยตรง — ปุ่มในหลังบ้านที่พนักงานใช้
+              บนคอมพิวเตอร์ยังคง 38px ตามเดิม ไม่ขยายทั้งระบบเพื่อความสม่ำเสมอของหน้าตา */}
           <button
-            className="rd-btn"
+            className="rd-btn min-h-11"
             type="submit"
             disabled={loading}
           >
