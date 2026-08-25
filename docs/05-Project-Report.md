@@ -263,6 +263,9 @@ Render Blueprint (`render.yaml`) — 3 service: Postgres DB, backend web service
 
 ---
 
+> 📦 **Version ที่นำเสนอ: `v1.0.0`** — รายละเอียด environment, deployment evidence, ขั้นตอน rollback
+> และ known issues ทั้งหมดอยู่ใน **[07-Release-Notes.md](07-Release-Notes.md)**
+
 ## ⑧ Security & Responsible Design
 
 ### Threats (STRIDE)
@@ -303,6 +306,10 @@ Dependency ทั้งหมดเป็น license แบบ permissive (MIT/B
 🚫 ไม่มีการนำ Password, API Key, หรือ Personal Data ใส่ให้ AI ตลอดโครงงาน (ยืนยันด้วย secrets scan จริง — ดู §⑥)
 
 ---
+
+**OSS License ของโปรเจกต์:** [MIT](../LICENSE) — เลือกเพราะ dependency ทั้งหมดที่ใช้เป็น MIT / BSD /
+Apache-2.0 / LGPL-with-exceptions ซึ่งเข้ากันได้ทั้งหมด **ไม่มี dependency ที่เป็น copyleft แบบ GPL/AGPL**
+ที่จะบังคับให้โปรเจกต์นี้ต้องเปลี่ยน license ตาม (ตรวจด้วยการไล่ metadata ของ dependency ที่ประกาศไว้ทั้ง 16 ตัว)
 
 ## ⑨ Product Demo Evidence
 
