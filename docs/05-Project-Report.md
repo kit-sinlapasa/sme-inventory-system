@@ -75,7 +75,7 @@
 
 ## ② Requirements Specification
 
-**FR ทั้งหมด 15 ข้อ** (FR-001 ถึง FR-015, เพิ่มจากร่างแรก 12 ข้อผ่าน CR-007/CR-008/CR-014), **NFR ทั้งหมด 7 ข้อ**, **User Story 8 เรื่อง** พร้อม Given-When-Then Acceptance Criteria — ทั้งหมดมี Priority (MoSCoW) และ Source อ้างอิงกลับไปยังโน้ตต้นฉบับ/Change Request ที่ทำให้เกิดขึ้น
+**FR ทั้งหมด 15 ข้อ** (FR-001 ถึง FR-015, เพิ่มจากร่างแรก 12 ข้อผ่าน CR-007/CR-008/CR-014), **NFR ทั้งหมด 8 ข้อ ครบทั้ง 7 หมวดที่โจทย์กำหนด** (Performance · Security ×2 · Reliability · Usability · Accessibility · Maintainability · Privacy), **User Story 8 เรื่อง** พร้อม Given-When-Then Acceptance Criteria — ทั้งหมดมี Priority (MoSCoW) และ Source อ้างอิงกลับไปยังโน้ตต้นฉบับ/Change Request ที่ทำให้เกิดขึ้น
 
 **ตัวอย่าง FR (ดูฉบับเต็มทั้ง 14 ข้อที่ [01-Requirements-Package.md §3](01-Requirements-Package.md)):**
 

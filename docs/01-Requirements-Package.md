@@ -62,7 +62,7 @@
 
 ---
 
-## 3. Functional Requirements (FR) — 12 ข้อ
+## 3. Functional Requirements (FR) — 15 ข้อ
 
 | ID | Requirement (เขียนให้ทดสอบได้) | Actor หลัก | Priority | มาจาก |
 |---|---|---|---|---|
@@ -86,7 +86,10 @@
 
 ---
 
-## 4. Non-Functional Requirements (NFR) — 6 ข้อ
+## 4. Non-Functional Requirements (NFR) — 8 ข้อ ครบทั้ง 7 หมวดที่โจทย์กำหนด
+
+> ครอบคลุม **Performance · Security · Reliability · Usability · Accessibility · Maintainability · Privacy**
+> — Security มี 2 ข้อ (การรั่วไหลของข้อมูล และการควบคุมสิทธิ์) ที่เหลือหมวดละ 1 ข้อ
 
 | ID | Requirement (มี metric + threshold + context) | หมวด | Priority | วิธีพิสูจน์ |
 |---|---|---|---|---|
@@ -95,6 +98,7 @@
 | **NFR-SEC-02** | Role Branch Staff ต้องไม่มีสิทธิ์เพิ่ม/แก้ไข/ลบสินค้าหรือจำนวนสต็อกในสต็อกหลัก — **ต้องบังคับใช้ที่ server ทุก endpoint** ไม่ใช่แค่ซ่อนปุ่มใน UI | ความปลอดภัย | **Must** | Automated test: ยิง API ตรงด้วย token สาขา → ต้องได้ 403 |
 | **NFR-REL-01** | การตัดสต็อก/จ่าย S/N ต้องเป็น **atomic operation** — S/N หนึ่งชิ้นต้องจ่ายออกได้เพียงครั้งเดียว แม้มี concurrent request เข้ามาพร้อมกัน | ความน่าเชื่อถือ | **Must** | Concurrency test |
 | **NFR-USE-01** | หน้าจอส่วนใหญ่ใช้โทนสีขาว-ฟ้าสะอาดตา จัดหมวดหมู่สินค้าตามประเภทอะไหล่ (อ้างอิง ihavecpu.com) *(หน้า Dashboard เปลี่ยนเป็นธีมสว่างสไตล์ dashboard.render.com ตาม CR-010 — โทนม่วง/ขาวแทนขาว-ฟ้า ขอบเขตจำกัดเฉพาะหน้านั้น)* และผู้ใช้ใหม่ต้องทำ task ค้นหา/เช็คประกันสำเร็จ **≥90% ภายใน 60 วินาที** โดยไม่ต้องมีคนสอน | ความใช้งานง่าย | Should | Task-based user test |
+| **NFR-A11Y-01** *(เพิ่มโดย CR-015)* | หน้าเช็คประกันสาธารณะ (task ที่ลูกค้าทั่วไปใช้) ต้อง: ทำงานให้เสร็จได้ด้วยคีย์บอร์ดอย่างเดียว · ช่องกรอกมีป้ายกำกับที่โปรแกรมอ่านหน้าจออ่านได้ (ไม่นับ `placeholder` เพราะหายไปเมื่อเริ่มพิมพ์) · เป้าหมายการกดบนมือถือ ≥44px ตาม WCAG 2.5.5 · ใช้งานได้ที่ความกว้างจอ 375px โดยไม่มีการเลื่อนแนวนอน | Accessibility | **Should** | สคริปต์วัดอัตโนมัติบน production (`docs/screenshots/usability-checks.js`) |
 | **NFR-MAINT-01** | Audit log (FR-011) ต้องเก็บข้อมูลย้อนหลังได้อย่างน้อย **1 ปี** และค้นหาตาม S/N ได้ภายใน **3 วินาที** | การบำรุงรักษา | **Should** *(ยกจาก Could โดย CR-005 — low effort, ผูกกับ FR-011 ที่เป็น Must อยู่แล้ว)* | `GET /api/audit-log` ใช้ index บน `entity_id`/`occurred_at` แล้ว — ยังไม่มี load test วัดเวลาจริงที่ scale ใหญ่ |
 | **NFR-PRIV-01** *(เพิ่มโดย CR-001)* | ข้อมูลผู้ซื้อ (ชื่อ/เบอร์โทร ใน FR-004) ต้องถูกเก็บไม่เกิน **3 ปีหลังวันหมดประกัน** หลังจากนั้นต้อง anonymize หรือลบ · เข้าถึงได้เฉพาะ role Admin/Branch Staff ที่เกี่ยวข้องกับการขายนั้น | ความเป็นส่วนตัว | **Must** | Data retention job test + access log review |
 
@@ -106,7 +110,7 @@
 **As a** เจ้าของอุปกรณ์ **I want** กรอกหมายเลขซีเรียล (S/N) เพื่อตรวจสอบสถานะการรับประกัน **so that** ฉันรู้ว่าสินค้ายังอยู่ในประกันหรือไม่โดยไม่ต้องโทรถามร้าน
 
 - **Given** ผู้ใช้เปิดหน้าเว็บสาธารณะ (ไม่ login) **When** กรอก S/N ที่ถูกต้องและมีในระบบ **Then** ระบบแสดงรุ่นสินค้า วันเริ่มประกัน วันหมดประกัน และสถานะ (อยู่ในประกัน/หมดประกัน)
-- **Given** ผู้ใช้กรอก S/N ที่ไม่มีในระบบ **When** กดค้นหา **Then** ระบบแสดง "ไม่พบข้อมูล กรุณาตรวจสอบ S/N อีกครั้ง"
+- **Given** ผู้ใช้กรอก S/N ที่ไม่มีในระบบ **When** กดค้นหา **Then** ระบบแสดงว่าไม่พบ S/N นี้ **พร้อมบอกรูปแบบที่ถูกต้อง** (เช่น `SN-GPU-00042`) และบอกทางออกถ้ายังไม่พบ — ไม่ใช่แจ้งแค่ "ไม่พบข้อมูล" ซึ่งเป็นทางตัน *(แก้ตาม CR-015 หลังเดิน task จริงตาม NFR-USE-01)*
 - **Given** S/N ถูกต้อง **When** ระบบแสดงผล **Then** ต้องไม่แสดงชื่อ เบอร์โทร หรือที่อยู่ของผู้ซื้อ
 
 ### US-02 — เพิ่มสินค้าใหม่ (HQ Admin) · Priority: Must · เชื่อมกับ FR-001
@@ -153,11 +157,13 @@
 
 ---
 
-## 6. Requirement Traceability Matrix (RTM) — เริ่มต้น
+## 6. Requirement Traceability Matrix (RTM)
 
-> คอลัมน์ Design / Code / Test ยังว่างเพราะยังไม่เข้าสู่ขั้น Architecture (สัปดาห์ 5) — สร้างโครง RTM ไว้ตั้งแต่ตอนนี้เพื่อให้ trace ได้ทันทีที่แต่ละขั้นเสร็จ ตาม Deck 02 สไลด์ 49 (Traceability ต้องทำตลอด lifecycle ไม่ใช่ย้อนทำตอนท้าย)
+> **ครบทุกคอลัมน์แล้ว** — Requirement → User Story → Design → Code/Module → Test Case → Evidence → Status
+> · คอลัมน์ **Design** ระบุ ER entity และ API contract · **Code/Module** ระบุไฟล์จริงที่ implement
+> · **Evidence/Status** ระบุผลการทดสอบที่รันจริง ไม่ใช่แค่เครื่องหมายถูก
 
-| Req ID | Source (P#) | User Story | Design | Test Case | Status |
+| Req ID | Source (P#) | User Story | Design (ER / API) | Code/Module + Test Case | Evidence / Status |
 |---|---|---|---|---|---|
 | FR-001 | P3, P11 | US-02 | ER: `PRODUCT` · API: `POST/PUT/DELETE /api/products` | `test_products.py` (5 tests) | ✅ Implemented + Tested |
 | FR-002 | P2, P3 | US-03 | ER: `ITEM` · API: `POST /api/items` (รับเข้า), `GET /api/items?sku_id=&branch_id=&status=` (ไล่ดู S/N รายชิ้น — ใช้ในหน้ารายละเอียดสินค้า) | `test_items_and_stock.py` (5 tests รวม RBAC ของ list endpoint) | ✅ Implemented + Tested |
@@ -179,6 +185,7 @@
 | NFR-SEC-02 | P8 | US-05 | Middleware role-check ทุก endpoint · STRIDE-T | 4 test ยืนยัน 403 (products, branch_sku, sales, stock) + `test_stride_mitigations.py` (JWT tampering, branch_id spoofing) | ✅ Implemented + Tested |
 | NFR-REL-01 | ความท้าทายโครงการ | US-04 | ADR-002 · Quality Attribute Scenario #1 | `test_sale_race_condition.py::test_only_one_concurrent_sale_succeeds` (10 concurrent thread) | ✅ Implemented + Tested |
 | NFR-USE-01 | P4, P10, CR-010 | — (cross-cutting) | หน้าเว็บครบ 3 persona (Public/Branch/Admin) โทนขาว-ฟ้าตาม Tailwind brand colors — **ยกเว้นหน้า Dashboard (Admin+Branch) เป็นธีมสว่างสไตล์ dashboard.render.com ตาม CR-010 (ม่วง/ขาวแทนขาว-ฟ้า)** | ทดสอบด้วยมือผ่าน browser จริง (login→ขาย→PR→approve→audit log ครบ loop) · **[06-Usability-Test-NFR-USE-01.md](06-Usability-Test-NFR-USE-01.md)** — เดิน task จริงบน production วัดจำนวนขั้นตอน + heuristic evaluation (Nielsen 10) + สคริปต์ทดสอบพร้อมรันกับผู้ใช้จริง | 🟡 **ส่วนที่วัดได้แล้ว:** task เช็คประกันใช้แค่ 2 ขั้นตอน (พิมพ์ → กด) หน้าเดียวมีองค์ประกอบกดได้ 2 ชิ้น ไม่ต้องล็อกอิน · heuristic evaluation ผ่าน 8/10 ข้อ · **พบและแก้ข้อบกพร่องจริง 2 จุดที่กระทบเกณฑ์โดยตรง**: ตัวอย่าง S/N ในช่องกรอกผิดรูปแบบจนค้นไม่มีวันเจอ (404) และข้อความ error ไม่บอกรูปแบบที่ถูกต้องจนกลายเป็นทางตัน — สองข้อนี้รวมกันโจมตีเงื่อนไข "โดยไม่ต้องมีคนสอน" โดยตรง · ⬜ **ตัวเลข ≥90% ภายใน 60 วินาที ยังไม่มี — ต้องรันกับผู้ใช้จริง 5-8 คนที่ไม่ใช่คนทำระบบ AI สร้างข้อมูลนี้แทนไม่ได้ (สคริปต์+ตารางบันทึกพร้อมใช้แล้วใน docs/06)** |
+| NFR-A11Y-01 *(CR-015)* | เกณฑ์หมวด Accessibility ที่โจทย์กำหนด | — (cross-cutting) | UI: `pages/public/WarrantyCheck.jsx` — `aria-label` บนช่องกรอก, ปุ่ม `min-h-11` (44px) | `docs/screenshots/usability-checks.js` — วัดอัตโนมัติบน production 10 ข้อ | ✅ Implemented + Tested — **10/10 ผ่านบน production** (ช่องกรอกพร้อมพิมพ์ 420ms · Tab แรกโฟกัสช่องกรอก · Enter ส่งฟอร์มได้ · มี `<h1>`/ปุ่มมีข้อความ/`lang=th` · 375px ไม่มีเลื่อนแนวนอน · ปุ่มสูง 44px) · **พบและแก้ 2 จุดจากการวัดนี้** — เดิมช่องกรอกมีแค่ `placeholder` (ขัด WCAG 3.3.2) และปุ่มสูง 38px |
 | NFR-MAINT-01 | — | — (cross-cutting) | index บน `audit_logs.occurred_at`/`entity_id` · API: `GET /api/audit-log` (filter ตาม entity_type/entity_id) | `test_audit_log.py` (3 tests) — ยืนยันว่า query ได้จริงและกรองถูกต้อง แต่ยังไม่มี load test วัดเวลาค้นหาจริงที่ scale ใหญ่ตามสเปก "3 วินาที" | 🟡 Implemented + Tested (functional) — **ยังไม่มีหลักฐานวัดเวลาจริงที่ scale ใหญ่ตามที่สเปกระบุ** (แก้จากที่เอกสารเดิมเขียนผิดว่า "ยังไม่มี endpoint" ทั้งที่มีมาตั้งแต่สัปดาห์ 3) |
 | NFR-PRIV-01 | CR-001 | US-04 | ER: `Sale.buyer_data_purged` · API: `POST /api/admin/purge-old-buyer-data` | `test_purge_buyer_data.py` (5 tests: purge/no-purge/no-reprocess/403/audit-log) | ✅ Implemented + Tested — manual purge ตาม CR-005 (ไม่ใช่ background job อัตโนมัติ) |
 
@@ -360,3 +367,22 @@
 
 - **Impact:** เพิ่ม `PurchaseHistoryOut` schema + endpoint + UI · เพิ่ม test 8 เคส (5 เคสเป็นการทดสอบขอบเขตความเป็นส่วนตัวโดยเฉพาะ) · **ไม่แตะ schema ฐานข้อมูล** เพราะข้อมูลมีอยู่แล้ว
 - **ตัดสินใจ:** Approved (2026-08-25)
+### CR-015: เพิ่ม NFR หมวด Accessibility (NFR-A11Y-01) + แก้ AC ของ US-01 ให้ตรงกับระบบจริง
+
+- **ที่มา:** ทีมให้ตรวจ Requirement Package เทียบกับเกณฑ์ที่โจทย์กำหนด ซึ่งระบุหมวด NFR ไว้ 7 หมวด: Performance · Security · Reliability · Usability · **Accessibility** · Maintainability · Privacy
+- **ช่องว่างที่พบ:** มีครบ 6 หมวด **ขาดหมวด Accessibility** — และที่สำคัญกว่านั้นคือ **งาน accessibility ถูกทำไปแล้วจริง** (เพิ่ม `aria-label`, ขยายเป้าหมายการกดเป็น 44px, ยืนยันว่าใช้คีย์บอร์ดอย่างเดียวได้, วัดบนจอ 375px) แต่ **ไม่มี requirement ให้ trace กลับไปหา** — งานลอยอยู่โดยไม่มีที่มา ซึ่งผิดหลัก traceability ที่ทั้งโครงงานยึดมาตลอด
+- **สิ่งที่ทำ:** ตั้ง NFR-A11Y-01 ให้ครอบคลุมสิ่งที่วัดได้จริงและวัดไปแล้ว พร้อมระบุวิธีพิสูจน์เป็นสคริปต์อัตโนมัติ ไม่ใช่คำบรรยายลอย ๆ
+
+**ปัญหาที่พบพร้อมกัน — Acceptance Criteria เพี้ยนจากระบบจริง**
+
+AC ของ US-01 เขียนว่าระบบต้องแสดง `"ไม่พบข้อมูล กรุณาตรวจสอบ S/N อีกครั้ง"` ซึ่งเป็นข้อความเดิม
+แต่ข้อความนั้น**ถูกเปลี่ยนไปแล้ว**ตอนแก้ปัญหาทางตันที่พบจากการเดิน task ตาม NFR-USE-01
+(ดู [docs/06](06-Usability-Test-NFR-USE-01.md) D-02) — **AC จึงกลายเป็นเกณฑ์ที่ระบบจริงไม่ผ่าน**
+โดยไม่มีใครสังเกต เพราะไม่มี automated test ที่ยึดข้อความนี้ไว้
+
+แก้ AC ให้ระบุ*พฤติกรรมที่ต้องการ* (บอกรูปแบบที่ถูกต้อง + บอกทางออก) แทนการ**ฝังข้อความคำต่อคำ**
+ซึ่งเป็นการเขียน AC ที่เปราะ — ผูกกับถ้อยคำแทนที่จะผูกกับสิ่งที่ผู้ใช้ต้องได้รับ
+
+- **Impact:** เพิ่ม NFR-A11Y-01 + แถว RTM · แก้ AC ของ US-01 · แก้หัวข้อ FR/NFR ที่ตัวเลขล้าสมัย · แก้หมายเหตุ RTM ที่ยังเขียนว่า "คอลัมน์ Design/Code/Test ยังว่าง" ซึ่งค้างมาตั้งแต่สัปดาห์แรก · ปรับหัวตาราง RTM ให้ตรงกับที่โจทย์กำหนดครบ 7 คอลัมน์
+- **ตัดสินใจ:** Approved (2026-08-25)
+
