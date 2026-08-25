@@ -1,0 +1,1 @@
+{ "theme": "neutral", "themeVariables": { "fontFamily": "Tahoma, Arial, sans-serif", "fontSize": "15px" }, "flowchart": { "useMaxWidth": false }, "er": { "useMaxWidth": false }, "sequence": { "useMaxWidth": false } }
