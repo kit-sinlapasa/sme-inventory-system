@@ -102,6 +102,7 @@ npm run dev
 | Load test สาธารณะ (NFR-PERF-01) | ✅ 200 concurrent request จริง — P95 1472-1533ms (เป้าหมาย ≤2000ms) ผ่าน 2 รอบ ดู `docs/03-Architecture-Design.md` หัวข้อ 9.5 |
 | STRIDE mitigation verification | ✅ ทุกข้อมี automated test กำกับแล้ว (`test_stride_mitigations.py`) — ดู `docs/03-Architecture-Design.md` หัวข้อ 7 |
 | Dependency security (`pip-audit` + `npm audit`) | ✅ Backend 23→1 vulnerability (เหลือ 1 จุดที่ unreachable, ดูเหตุผลหัวข้อ 9.1) · Frontend 2→0 vulnerability (production deps) |
+| อีเมลแจ้งเตือนสต็อกต่ำ (FR-012) | ⚠️ **ตรรกะทำงานถูกและมี test คุม แต่ส่งออกจาก production ไม่ได้** — Render free tier บล็อก outbound SMTP (`[Errno 101] Network is unreachable`) พิสูจน์ด้วย `GET /api/admin/smtp-check` · ระบบ log แทนการส่ง ไม่ crash และไม่บล็อกการขาย · ดู K-03 ใน [Release Notes](docs/07-Release-Notes.md) |
 | Usability test (NFR-USE-01) | ✅ **ทดสอบกับผู้ใช้ภายนอก 7 คนแล้ว (2026-08-25)** — สำเร็จ 7/7 ภายใน 60 วินาที เฉลี่ย 21.7 วิ · ตัดผู้พัฒนาออกจากกลุ่มตัวอย่าง · รอบสองเพิ่ม 3 คนตามที่ผู้รีวิว PR ติง · ส่วนที่วัดด้วยเครื่องมือผ่าน 10/10 · ระบุข้อจำกัด n=7 ไว้ตรง ๆ ใน [docs/06](docs/06-Usability-Test-NFR-USE-01.md) |
 | Deploy จริง (Render) | ✅ **Live** — deploy สำเร็จหลังแก้บั๊กจริง 2 จุด (Python version, `alembic` bare command) ดู URL ด้านบน — **auto-deploy ทุกครั้งที่ merge เข้า `main`** · ตรวจล่าสุดแล้วว่าใช้งานได้ครบ: ล็อกอิน 5 บัญชี, RBAC, CORS, ข้อมูล dashboard ครบถ้วน |
 
