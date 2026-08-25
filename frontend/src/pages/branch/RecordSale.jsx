@@ -23,6 +23,11 @@ export default function RecordSale() {
   const [saleError, setSaleError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // FR-015 (CR-014) — ค้นประวัติการซื้อจากเบอร์โทร สำหรับตอนลูกค้ามาเคลมแต่ไม่มี S/N
+  const [buyerPhoneQuery, setBuyerPhoneQuery] = useState('')
+  const [history, setHistory] = useState(null)
+  const [historyError, setHistoryError] = useState('')
+
   const [items, setItems] = useState([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('InStock')
@@ -46,6 +51,22 @@ export default function RecordSale() {
   useEffect(() => {
     loadItems()
   }, [])
+
+  async function handleBuyerLookup(e) {
+    e.preventDefault()
+    setHistoryError('')
+    setHistory(null)
+    try {
+      const { data } = await client.get(`/sales/by-buyer?phone=${encodeURIComponent(buyerPhoneQuery)}`)
+      setHistory(data)
+    } catch (err) {
+      setHistoryError(
+        err.response?.status === 422
+          ? 'กรุณากรอกเบอร์โทรให้ครบ (อย่างน้อย 9 หลัก) — ระบบค้นด้วยเบอร์เต็มเท่านั้น'
+          : 'ค้นหาไม่สำเร็จ',
+      )
+    }
+  }
 
   async function handleLookup(e) {
     e.preventDefault()
@@ -198,6 +219,69 @@ export default function RecordSale() {
           </p>
         </div>
       )}
+
+      {/* FR-015 (CR-014) — ลูกค้ามาเคลมโดยไม่มี S/N เกิดขึ้นจริงหน้าร้าน
+          เดิมค้นได้ทางเดียวคือด้วย S/N พนักงานจึงช่วยอะไรไม่ได้เลยทั้งที่ข้อมูลอยู่ในระบบ */}
+      <div className="mt-8 rd-card p-6">
+        <h2 className="rd-title">ค้นประวัติการซื้อจากเบอร์โทร</h2>
+        <p className="text-xs text-ink-muted mt-1 mb-3">
+          ใช้ตอนลูกค้ามาเคลมแต่ไม่มี S/N ติดมา · ต้องกรอกเบอร์เต็มเท่านั้น ค้นบางส่วนไม่ได้
+        </p>
+        <form onSubmit={handleBuyerLookup} className="flex gap-2 max-w-md">
+          <input
+            className="rd-input flex-1"
+            aria-label="เบอร์โทรผู้ซื้อ"
+            placeholder="เช่น 0812345678"
+            value={buyerPhoneQuery}
+            onChange={(e) => setBuyerPhoneQuery(e.target.value)}
+            required
+          />
+          <button className="rd-btn" type="submit">ค้นหา</button>
+        </form>
+        {historyError && <p className="text-[#d03b3b] text-sm mt-2">{historyError}</p>}
+        {history && history.length === 0 && (
+          <p className="text-ink-muted text-sm mt-3">
+            ไม่พบประวัติการซื้อของเบอร์นี้ในสาขาของคุณ
+          </p>
+        )}
+        {history && history.length > 0 && (
+          <div className="mt-3 overflow-x-auto">
+            <table className="rd-table">
+              <thead>
+                <tr>
+                  <th className="rd-th">S/N</th>
+                  <th className="rd-th">สินค้า</th>
+                  <th className="rd-th">ผู้ซื้อ</th>
+                  <th className="rd-th">วันที่ขาย</th>
+                  <th className="rd-th">ประกัน</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={h.sale_id} className="rd-tr">
+                    <td className="rd-td font-mono text-xs">{h.serial_number}</td>
+                    <td className="rd-td text-ink-muted">
+                      {h.category} — {h.brand} {h.model}
+                    </td>
+                    <td className="rd-td">{h.buyer_name}</td>
+                    <td className="rd-td text-ink-muted whitespace-nowrap">
+                      {new Date(h.sold_at).toLocaleDateString('th-TH')}
+                    </td>
+                    <td className="rd-td whitespace-nowrap">
+                      <span className={`rd-badge ${h.warranty_status === 'อยู่ในประกัน' ? 'rd-badge-approved' : 'rd-badge-muted'}`}>
+                        {h.warranty_status}
+                      </span>
+                      <span className="block text-xs text-ink-muted mt-0.5">
+                        ถึง {new Date(h.warranty_expires_at).toLocaleDateString('th-TH')}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="mt-8">
         <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">

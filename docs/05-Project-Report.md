@@ -34,6 +34,28 @@
 
 **อยู่ในขอบเขต:** จัดการ SKU/สต็อกรายชิ้น, บันทึกการขายพร้อมคำนวณประกันอัตโนมัติ, เช็คประกันสาธารณะ, คำขอสั่งซื้อ (PR→PO) ระหว่างสาขา-HQ, audit log, แจ้งเตือนสต็อกใกล้หมดผ่านอีเมล, รูปสินค้า, KPI dashboard, การจัดการข้อมูลส่วนบุคคลตาม retention policy
 
+**ความครอบคลุมเทียบกับโดเมนที่โจทย์กำหนด** (Product · Stock · Order · Customer · Alert · Report)
+
+| โดเมน | ความสามารถในระบบ | FR |
+|---|---|---|
+| **Product** | จัดการสินค้า (เพิ่ม/แก้ไข/ระงับ/กู้คืน) + รูปสูงสุด 5 รูปต่อ SKU | FR-001, FR-013 |
+| **Stock** | รับเข้ารายชิ้นมี S/N · ยอดคงเหลือเรียลไทม์แยกสาขา · จุดสั่งซื้อต่อสาขา | FR-002, FR-003, FR-012 |
+| **Order** | ขายหน้าร้าน (Sale) · คำขอสั่งซื้อระหว่างสาขา-สำนักงานใหญ่ (PR→PO) | FR-004, FR-009, FR-010 |
+| **Customer** | เช็คประกันสาธารณะด้วย S/N · **ค้นประวัติการซื้อจากเบอร์โทร** · ลบข้อมูลตาม retention policy | FR-006, **FR-015**, NFR-PRIV-01 |
+| **Alert** | แจ้งเตือนอีเมลเมื่อสต็อกต่ำกว่าจุดสั่งซื้อ (มี debounce กันสแปม) | FR-012 |
+| **Report** | Dashboard เชิงวิเคราะห์ 5 กราฟ + 3 ตาราง บน 8 aggregate endpoint | FR-014 |
+
+> **FR-015 เพิ่มเข้ามาจากการตรวจสอบนี้เอง** — เดิมโดเมน Customer มีแค่การ*เก็บ*และ*ลบ*ข้อมูลผู้ซื้อ
+> แต่ไม่มีความสามารถ*ใช้งาน*เลย ระบบค้นได้ทางเดียวคือด้วย S/N ถ้าลูกค้าทำสติกเกอร์หลุด
+> พนักงานช่วยอะไรไม่ได้ ทั้งที่ข้อมูลอยู่ในฐานข้อมูลแล้ว (ดู CR-014)
+
+**ความท้าทายหลักตามโจทย์ — Transaction consistency + business rules**
+
+| ความท้าทาย | วิธีจัดการ | หลักฐาน |
+|---|---|---|
+| **Transaction consistency** | ADR-002 — conditional `UPDATE ... WHERE status='InStock'` + เช็ค `rowcount` ร่วมกับ Idempotency-Key · pattern เดียวกันใช้ซ้ำกับ PR approve/reject | concurrency test ยิง 10 thread แข่งกันจริงบน Postgres จริง — สำเร็จได้แค่ 1 เสมอ |
+| **Business rules** | คำนวณวันหมดประกันจากวันขายจริงตามระยะประกันของหมวดสินค้า · จุดสั่งซื้อต่อ SKU ต่อสาขา · แยกหน้าที่ (Admin อนุมัติ PR ได้แต่ขายเองไม่ได้) · soft delete แทนการลบถาวรเพื่อรักษาประวัติประกัน | 105 automated tests · RBAC boundary tests ยืนยัน 403 ทุกเส้นทาง |
+
 **นอกขอบเขต:** ไม่มีตะกร้าสินค้า/ชำระเงิน/จัดส่งออนไลน์ (อ้างอิง ihavecpu.com เฉพาะด้านหน้าตา/การจัดหมวดหมู่เท่านั้น) การขายเกิดขึ้นหน้าร้าน พนักงานเป็นผู้บันทึกรายการเข้าระบบ ไม่ใช่ลูกค้ากรอกเอง
 
 ### Stakeholders
@@ -53,7 +75,7 @@
 
 ## ② Requirements Specification
 
-**FR ทั้งหมด 14 ข้อ** (FR-001 ถึง FR-014, เพิ่มจากร่างแรก 12 ข้อผ่าน CR-007/CR-008), **NFR ทั้งหมด 7 ข้อ**, **User Story 8 เรื่อง** พร้อม Given-When-Then Acceptance Criteria — ทั้งหมดมี Priority (MoSCoW) และ Source อ้างอิงกลับไปยังโน้ตต้นฉบับ/Change Request ที่ทำให้เกิดขึ้น
+**FR ทั้งหมด 15 ข้อ** (FR-001 ถึง FR-015, เพิ่มจากร่างแรก 12 ข้อผ่าน CR-007/CR-008/CR-014), **NFR ทั้งหมด 7 ข้อ**, **User Story 8 เรื่อง** พร้อม Given-When-Then Acceptance Criteria — ทั้งหมดมี Priority (MoSCoW) และ Source อ้างอิงกลับไปยังโน้ตต้นฉบับ/Change Request ที่ทำให้เกิดขึ้น
 
 **ตัวอย่าง FR (ดูฉบับเต็มทั้ง 14 ข้อที่ [01-Requirements-Package.md §3](01-Requirements-Package.md)):**
 
@@ -144,7 +166,7 @@ REST API ทุก endpoint แยกตาม resource (auth, public, products,
 | Auth | `python-jose` (JWT, HS256) · `passlib[bcrypt]` |
 | Rate Limiting | `slowapi` |
 | Frontend | React 18 + Vite + Tailwind CSS + React Router v7 |
-| Testing | Pytest + httpx (backend, 91 tests) |
+| Testing | Pytest + httpx (backend, 113 tests) |
 | CI/CD | GitHub Actions |
 | Deploy | Render.com (free tier — Postgres + 2 web service) |
 
@@ -418,7 +440,7 @@ Edge case อื่นที่ verify แล้วจริงแต่ไม�
 
 ### Test Evidence
 
-- Full test suite: `backend/tests/` — จำนวนล่าสุดตรวจซ้ำได้ด้วย `python -m pytest -q` (ณ วันเขียน 91 ผ่านทั้งหมด) · ตัวเลขนี้เคยล้าสมัย 2 รอบเพราะฝังไว้เฉย ๆ จึงระบุคำสั่งกำกับไว้ให้ตรวจเองได้
+- Full test suite: `backend/tests/` — จำนวนล่าสุดตรวจซ้ำได้ด้วย `python -m pytest -q` (ณ วันเขียน 113 ผ่านทั้งหมด) · ตัวเลขนี้เคยล้าสมัย 2 รอบเพราะฝังไว้เฉย ๆ จึงระบุคำสั่งกำกับไว้ให้ตรวจเองได้
 - Load test script: `backend/scripts/load_test.py`
 - CI logs: ดูที่ GitHub Actions run history ของ repo (เขียวทุกครั้งตั้งแต่สัปดาห์ 2)
 

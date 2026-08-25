@@ -80,6 +80,7 @@
 | **FR-012** | ระบบต้องแจ้งเตือน Admin เมื่อยอดคงเหลือของ SKU ใดในสาขาใดต่ำกว่าจุดสั่งซื้อ (reorder point) ที่กำหนดไว้**ต่อ SKU ต่อสาขา** *(แก้ตาม CR-002)* **ผ่านช่องทางอีเมล** *(กลไกแจ้งเตือนเพิ่มโดย CR-006)* | HQ Admin | **Should** *(คืนโดย CR-005)* | โน้ตหน้า 2 (alert สินค้าใกล้หมด) |
 | **FR-013** *(เพิ่มโดย CR-007)* | ระบบต้องให้ Admin เพิ่ม/ลบรูปภาพสินค้าได้สูงสุด **5 รูปต่อ SKU** โดยเก็บเป็น URL | HQ Admin | **Should** | ทีมขอเพิ่ม 2026-08-24 |
 | **FR-014** *(เพิ่มโดย CR-008)* | ระบบต้องแสดง Dashboard สรุปตัวเลขสำคัญ (KPI) สำหรับทั้ง Admin (ภาพรวมทุกสาขา) และ Branch (เฉพาะสาขาตัวเอง) โดยใช้ข้อมูลจาก endpoint ที่มีอยู่แล้ว | Admin, Branch Staff | **Should** | ทีมขอเพิ่ม 2026-08-24 |
+| **FR-015** *(เพิ่มโดย CR-014)* | ระบบต้องให้พนักงานค้นประวัติการซื้อของลูกค้าจากเบอร์โทรได้ โดยต้องกรอกเบอร์เต็มเท่านั้น (ค้นบางส่วนไม่ได้) และไม่คืนรายการที่ถูกลบข้อมูลตาม retention policy แล้ว | Admin, Branch Staff | **Should** | ทีมขอเพิ่ม 2026-08-25 |
 
 > 📌 **หมายเหตุ:** P9 (เป็นเว็บ), P10 (concept แบบ ihavecpu) และ P5 (อัพโหลด GitHub) **ไม่ใช่ FR** — P9/P10 เป็น solution decision (บันทึกไว้ใน NFR-USE-01 และจะกลายเป็น ADR ในขั้น Architecture) ส่วน P5 เป็นข้อกำหนดของวิชา ไม่ใช่ requirement ของระบบ จึงไม่ใส่ใน SRS (ดู Deck 02 สไลด์ 22 — anti-pattern "Implementation-biased")
 
@@ -172,6 +173,7 @@
 | FR-012 | โน้ตหน้า 2 | US-08 | ER: `BRANCH_SKU.reorder_point` + `low_stock_alert_sent_at` · API: `GET/PUT /api/branch-sku/{branch_id}/{sku_id}` · `services/stock_alerts.py`, `services/notifications.py` (CR-006) | `test_branch_sku.py` (4 tests) + `test_stock_alerts.py` (3 tests: debounce ยิงครั้งเดียว, reset หลัง restock, ไม่ยิงถ้าไม่ตั้ง reorder point) | ✅ Implemented + Tested — ส่งอีเมลจริงยังไม่ verify (ไม่มี SMTP credential ให้ AI ทดสอบ ดู CR-006) แต่ debounce logic verify ครบผ่าน monkeypatch |
 | FR-013 *(CR-007)* | ทีมขอเพิ่ม 2026-08-24 | — (cross-cutting, ผูกกับ US-02) | ER: `PRODUCT_IMAGE` (แยกตาราง ตามหลัก 1NF) · API: `POST/DELETE /api/products/{id}/images` | `test_product_images.py` (7 tests: add/403/422/max-5/cascade) | ✅ Implemented + Tested — verify ผ่าน browser จริงด้วย (`Products.jsx` เพิ่ม/ลบรูป, เห็น thumbnail, นับ 0-5/5) |
 | FR-014 *(CR-008 → ธีม CR-010 → ออกแบบใหม่ทั้งหน้า CR-013)* | ทีมขอเพิ่ม 2026-08-24 | — (cross-cutting) | `routers/reports.py` — 8 aggregate endpoint (`summary`, `daily-sales`, `top-products`, `stock-aging`, `branch-performance`, `weekday-sales`, `stockout-risk`, `pending-requests`) สรุปที่ SQL ไม่ใช่ที่เบราว์เซอร์ · `components/dashboard/{palette,charts,panels}` — 5 กราฟ + 3 ตาราง + KPI 4 ช่อง · `admin/Dashboard.jsx`, `branch/Dashboard.jsx` (สาขาได้ชุดย่อยที่ตัดข้อมูลสาขาอื่นออก) | `tests/integration/test_reports.py` — 18 เคส: scope สาขาต่อ endpoint, กรองก่อน limit, แบ่งวัน/วันในสัปดาห์ตามเวลาไทย, ช่วงเทียบไม่ทับกัน, จัดลำดับความเสี่ยงของขาด, ทุกถังอายุคืนครบแม้ว่าง, **KPI ค้างสต็อกต้องเท่ากับแท่ง "180+" เป๊ะ** (ทดสอบด้วยของอายุ 180.5 วันที่คร่อมเส้นแบ่งพอดี), KPI ใกล้หมดต้องรายงานส่วนที่ของหมดแล้วแยกออกมา | ✅ Implemented + Tested — 18/18 ผ่าน · **verify ในเบราว์เซอร์จริง 6 interaction ทีละอัน**: ปุ่ม 7/30/90 (30 วัน = 361 ชิ้น → 90 วัน = 695) · กรองสาขา (คงเหลือ 352 → 106 ตรงกับสาขาสยาม) · คลิก legend ซ่อนเส้นแล้วอ่านค่า `stroke` ของเส้นที่เหลือ ยังเป็น `#2a78d6, #D55E00, #009E73` ไม่เปลี่ยน · คลิกแท่งในกราฟสินค้าขายดี → เปิด modal "ASUS ROG Strix B650-A" ถูกตัว · คลิกแถวในตารางเสี่ยงของขาด → เปิด modal "Intel Core i3-13100" ถูกตัว · ปุ่ม "ขอสั่งซื้อ" เปิดฟอร์มพร้อมเลือกสินค้าถูกตัว · รูปแบบวันในสัปดาห์ที่ seed ใส่ไว้ปรากฏถูกต้องตามเวลาไทย (อา. 151 / ส. 149 / ศ. 123 เทียบกับ จ. 53 / อ. 55) |
+| FR-015 *(CR-014)* | ทีมขอเพิ่ม 2026-08-25 | — (cross-cutting, ผูกกับ US-01/US-04) | API: `GET /api/sales/by-buyer?phone=` · Schema: `PurchaseHistoryOut` (ไม่มี `buyer_phone` โดยตั้งใจ) · UI: ส่วนค้นหาในหน้าบันทึกขาย | `test_purchase_history.py` (8 tests — **5 เคสเป็นการทดสอบขอบเขตความเป็นส่วนตัว**: ปฏิเสธเบอร์สั้น, ไม่ match บางส่วน, ไม่คืนรายการที่ purge แล้ว, scope สาขา, ต้องล็อกอิน) | ✅ Implemented + Tested — 8/8 ผ่าน · ปิดช่องว่างโดเมน **Customer** ที่เดิมมีแค่การเก็บ/ลบข้อมูล ไม่มีความสามารถใช้งาน |
 | NFR-PERF-01 | — | US-01 | Quality Attribute Scenario #2 · `backend/scripts/load_test.py` | Load test จริง 200 concurrent request (2 รอบ) — ดู `docs/03-Architecture-Design.md` หัวข้อ 9.5 | ✅ Implemented + Tested — P95 1472-1533ms ผ่านเป้าหมาย ≤2000ms ทั้ง 2 รอบ |
 | NFR-SEC-01 | — | US-01 | API response schema (ไม่มี field buyer) · STRIDE-I | `test_public_warranty.py::test_warranty_check_valid_serial_returns_status_without_buyer_info` | ✅ Implemented + Tested |
 | NFR-SEC-02 | P8 | US-05 | Middleware role-check ทุก endpoint · STRIDE-T | 4 test ยืนยัน 403 (products, branch_sku, sales, stock) + `test_stride_mitigations.py` (JWT tampering, branch_id spoofing) | ✅ Implemented + Tested |
@@ -339,3 +341,22 @@
 **Impact:** เพิ่ม `routers/reports.py`, `schemas/report.py`, `components/dashboard/` (palette + charts + panels) · เพิ่ม 18 tests รวมเป็น **87 tests** · แก้ `seed.py` (ข้อมูลย้อนหลัง) — ไม่กระทบ business logic เดิม
 
 **ตัดสินใจ:** Approved (2026-08-24)
+
+### CR-014: เพิ่ม FR ใหม่ — ค้นประวัติการซื้อจากเบอร์โทรลูกค้า (FR-015)
+
+- **ที่มา:** ทีมให้ตรวจขอบเขตโครงงานเทียบกับสไลด์ที่ระบุ 6 โดเมน (**Product · Stock · Order · Customer · Alert · Report**) — ตรวจแล้วพบว่า 5 โดเมนมีความสามารถรองรับครบ แต่ **Customer มีแค่การเก็บและลบข้อมูล ไม่มีความสามารถใช้งานเลย**
+- **ช่องว่างที่พบจริง:** ระบบค้นได้ทางเดียวคือ **ด้วย S/N** (`GET /api/items/by-serial/{sn}`) ถ้าลูกค้าทำสติกเกอร์หลุดหรือจำ S/N ไม่ได้ พนักงานหาประวัติการซื้อไม่ได้เลย **ทั้งที่ข้อมูล `buyer_phone` อยู่ในฐานข้อมูลอยู่แล้ว** — เป็นเคสที่เกิดจริงหน้าร้านเวลาลูกค้ามาเคลม
+- **สิ่งที่ทำ:** เพิ่ม `GET /api/sales/by-buyer?phone=` + ส่วนค้นหาในหน้าบันทึกขาย
+
+**ตัดสินใจเรื่องความเป็นส่วนตัว — จงใจทำให้ค้นได้เฉพาะเมื่อ "รู้เบอร์อยู่แล้ว":**
+
+| ข้อกำหนด | เหตุผล |
+|---|---|
+| ต้องตรงทั้งเบอร์ (`==` ไม่ใช่ `LIKE %x%`) | ถ้าเปิดให้ค้นบางส่วน พนักงานพิมพ์ "08" แล้วไล่อ่านข้อมูลลูกค้าทั้งฐานได้ เกินความจำเป็นของงานและขัดเจตนา NFR-PRIV-01 |
+| อย่างน้อย 9 หลัก | กันการเดาสุ่มด้วยเลขสั้น |
+| ไม่คืนรายการที่ถูก purge แล้ว | ข้อมูลถูกลบตาม retention policy ไปแล้ว การคืนแถวที่ชื่อเป็น "ข้อมูลถูกลบ" ไม่ช่วยพนักงานและทำให้เข้าใจผิดว่ายังมีข้อมูลอยู่ |
+| ไม่ส่ง `buyer_phone` กลับใน response | ผู้เรียกพิมพ์เบอร์มาเองอยู่แล้ว การส่งกลับไม่เพิ่มประโยชน์ แต่เพิ่มโอกาสที่เบอร์จะไปโผล่ใน log/cache ฝั่ง client |
+| ต้องล็อกอิน + scope สาขา | ต่างจากหน้าเช็คประกันสาธารณะ — endpoint นี้คืนข้อมูลผู้ซื้อ (NFR-SEC-02) |
+
+- **Impact:** เพิ่ม `PurchaseHistoryOut` schema + endpoint + UI · เพิ่ม test 8 เคส (5 เคสเป็นการทดสอบขอบเขตความเป็นส่วนตัวโดยเฉพาะ) · **ไม่แตะ schema ฐานข้อมูล** เพราะข้อมูลมีอยู่แล้ว
+- **ตัดสินใจ:** Approved (2026-08-25)
